@@ -1,12 +1,35 @@
 {
-  "benchmark_data_file": "output/data/benchmark.csv",
-  "benchmark_file_last_modified_utc": "2026-05-23T03:40:15.305039Z",
-  "metadata_recorded_utc": "2026-05-24T01:51:50.375210Z",
-  "command": "py -3 scripts/bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output/data/benchmark.csv",
-  "git_commit_at_metadata_recording": "dc244088481d9d2c900d66f2f7c96d65c0536000",
+  "benchmark_data_file": "output\\data\\benchmark.csv",
+  "started_at_utc": "2026-05-24T04:16:22.688520Z",
+  "finished_at_utc": "2026-05-24T04:18:49.631634Z",
+  "command": "scripts\\bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output\\data\\benchmark.csv",
+  "repeats": 3,
+  "timeout_seconds": 8.0,
+  "full": true,
+  "reach_one_second": true,
+  "max_n": 64000000000,
+  "git_commit": "07fc876d868541a5c1c822fc870e2fdaa57d4b16",
+  "git_dirty": true,
   "python": "3.14.0",
   "platform": "Windows-11-10.0.26200-SP0",
   "machine": "AMD64",
   "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel",
-  "notes": "Benchmark values are local and hardware-relative; compare same-run percentages rather than absolute one-second n across machines."
+  "build": {
+    "built_at_utc": "2026-05-24T04:16:14.946334Z",
+    "compiler": "C:\\Users\\Admin\\AppData\\Local\\Microsoft\\WinGet\\Packages\\MartinStorsjo.LLVM-MinGW.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\\llvm-mingw-20260421-ucrt-x86_64\\bin\\clang++.EXE",
+    "flags": [
+      "-std=c++20",
+      "-Wall",
+      "-Wextra",
+      "-pedantic",
+      "-O3",
+      "-march=native"
+    ],
+    "portable": false,
+    "debug": false,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "machine": "AMD64",
+    "python": "3.14.0"
+  },
+  "notes": "Absolute one-second reach is hardware-relative; same-run relative lift is the primary comparison."
 }

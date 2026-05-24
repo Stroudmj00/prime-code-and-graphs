@@ -35,11 +35,12 @@ CUSTOM_ALGORITHMS = [
     "sieve-wheel30-bitset-fsm",
     "sieve-lagrange-fsm",
     "sieve-lagrange-lehmer-fsm",
+    "sieve-lagrange-lehmer-axler-fsm",
 ]
 
 GROUP_NAMES = {
     "video": "Video-inspired baseline",
-    "custom": "Additional variants",
+    "custom": "My C++ variants",
 }
 
 GROUP_CONFIG = {
@@ -71,7 +72,8 @@ STYLE = {
     "sieve-wheel30-bitset-state": ("Wheel-30 stateful bitset", "#f97316", "-"),
     "sieve-wheel30-bitset-fsm": ("Wheel-30 FSM bitset", "#fbbf24", "-"),
     "sieve-lagrange-fsm": ("Lagrange + FSM", "#84cc16", "-"),
-    "sieve-lagrange-lehmer-fsm": ("Lehmer + FSM", "#22c55e", "-"),
+    "sieve-lagrange-lehmer-fsm": ("Lehmer + pi table FSM", "#22c55e", "-"),
+    "sieve-lagrange-lehmer-axler-fsm": ("Lehmer + pi table + Axler", "#15803d", "-"),
 }
 
 CANVAS_BG = "#f6f8fc"
@@ -240,10 +242,10 @@ def add_card(
     )
 
 
-def add_group_badge(ax, text: str, color: str, x: float, y: float) -> None:
+def add_group_badge(ax, text: str, color: str, x: float, y: float, width: float = 0.18) -> None:
     badge = FancyBboxPatch(
         (x, y),
-        0.18,
+        width,
         0.045,
         boxstyle="round,pad=0.01,rounding_size=0.02",
         linewidth=0.9,
@@ -373,10 +375,10 @@ def plot_story_scorecard(rows: dict[str, list[dict[str, float]]], out: pathlib.P
         value_size=17,
     )
 
-    add_group_badge(ax, "Video-inspired baseline", GROUP_CONFIG["video"]["accent"], 0.06, 0.79)
-    add_group_badge(ax, "Added variants", GROUP_CONFIG["custom"]["accent"], 0.275, 0.79)
+    add_group_badge(ax, "Video target + portable baseline", GROUP_CONFIG["video"]["accent"], 0.06, 0.79, 0.38)
+    add_group_badge(ax, "My C++ result", GROUP_CONFIG["custom"]["accent"], 0.49, 0.79, 0.45)
 
-    ax_ladder = fig.add_axes([0.09, 0.18, 0.58, 0.34])
+    ax_ladder = fig.add_axes([0.13, 0.18, 0.54, 0.34])
     ax_ladder.set_facecolor("#f8fbff")
     ladder = [("Wheel baseline", baseline_estimate, GROUP_CONFIG["video"]["line"])]
     if bitset is not None:
@@ -386,7 +388,16 @@ def plot_story_scorecard(rows: dict[str, list[dict[str, float]]], out: pathlib.P
     legendre = reaches.get("sieve-lagrange-fsm")
     if legendre is not None and best_algorithm != "sieve-lagrange-fsm":
         ladder.append(("Legendre skip", float(legendre["estimate"]), GROUP_CONFIG["custom"]["line"]))
-    ladder.append(("Lehmer skip", best_estimate, GROUP_CONFIG["custom"]["accent"]))
+    lehmer = reaches.get("sieve-lagrange-lehmer-fsm")
+    if lehmer is not None and best_algorithm not in {"sieve-lagrange-fsm", "sieve-lagrange-lehmer-fsm"}:
+        ladder.append(("Lehmer + pi table", float(lehmer["estimate"]), GROUP_CONFIG["custom"]["line"]))
+    best_label_by_algorithm = {
+        "sieve-lagrange-fsm": "Legendre skip",
+        "sieve-lagrange-lehmer-fsm": "Lehmer + pi table",
+        "sieve-lagrange-lehmer-axler-fsm": "Pi table + Axler",
+    }
+    best_label = best_label_by_algorithm.get(best_algorithm, STYLE[best_algorithm][0])
+    ladder.append((best_label, best_estimate, GROUP_CONFIG["custom"]["accent"]))
 
     labels = [item[0] for item in ladder]
     values = [item[1] for item in ladder]
@@ -520,6 +531,17 @@ def plot_runtime(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -> 
                     linewidths=0.8,
                     zorder=6,
                 )
+            if highlighted:
+                ax.annotate(
+                    "winner",
+                    xy=(xs[-1], ys[-1]),
+                    xytext=(8, 8),
+                    textcoords="offset points",
+                    color="#166534",
+                    fontsize=9,
+                    weight="bold",
+                    arrowprops={"arrowstyle": "->", "color": "#166534", "lw": 1.0},
+                )
 
         ax.axhline(1.0, color="#ef4444", linewidth=1.5, linestyle="--")
         ax.text(
@@ -534,10 +556,8 @@ def plot_runtime(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -> 
         )
         ax.set_xscale("log")
         ax.set_yscale("log")
-        ax.set_title(
-            f"{'A' if group == 'video' else 'B'}. {GROUP_NAMES[group]} ({'baseline' if group == 'video' else 'added variants'})",
-            loc="left",
-        )
+        subtitle = "video baseline set" if group == "video" else "my added variants"
+        ax.set_title(f"{'A' if group == 'video' else 'B'}. {GROUP_NAMES[group]} ({subtitle})", loc="left")
         max_sampled_n = max(item["n"] + 1 for data in rows.values() for item in data)
         runtime_right = max(VIDEO_TARGET_N * 1.4, max_sampled_n * 1.2, float(best_reach["estimate"]) * 1.2)
         ax.set_xlim(100_000, runtime_right)
@@ -610,6 +630,9 @@ def plot_max_under(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -
             bar.set_hatch("//")
         else:
             bar.set_alpha(0.98)
+        if algorithm == best_algorithm:
+            bar.set_edgecolor("#0f172a")
+            bar.set_linewidth(2.2)
 
     if ordered_video and ordered_custom:
         separator = len(ordered_video) - 0.45 + gap / 2
@@ -638,7 +661,7 @@ def plot_max_under(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -
         ax.text(
             left_label_x,
             separator + 0.18,
-            "Added variants",
+            "My C++ variants",
             color=GROUP_CONFIG["custom"]["accent"],
             fontsize=9.6,
             va="bottom",
@@ -669,10 +692,12 @@ def plot_max_under(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -
 
     for bar, value, algorithm in zip(bars, values, ordered):
         emphasis = "bold" if algorithm == best_algorithm else "normal"
+        target_ratio = value / VIDEO_TARGET_N
+        suffix = "  winner" if algorithm == best_algorithm else ""
         ax.text(
             value * 1.05,
             bar.get_y() + bar.get_height() / 2,
-            format_int(value),
+            f"{format_int(value)} ({target_ratio:.2f}x target){suffix}",
             va="center",
             color="#0f172a",
             fontsize=9.6,
@@ -685,18 +710,8 @@ def plot_max_under(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -
 
 
 def plot_prime_growth(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -> None:
-    preferred = [
-        "sieve-lagrange-lehmer-fsm",
-        "sieve-lagrange-fsm",
-        "sieve-wheel30-bitset-fsm",
-        "sieve-wheel30-bitset",
-        "sieve-wheel30-indexed",
-        "sieve-wheel30-bitset-state",
-        "sieve-wheel30-segm",
-    ]
-    chosen = next((algorithm for algorithm in preferred if algorithm in rows), None)
-    if chosen is None:
-        chosen = rows.keys().__iter__().__next__()
+    reaches = reach_by_algorithm(rows)
+    chosen = max(reaches, key=lambda key: float(reaches[key]["estimate"]))
     data = rows[chosen]
     label = STYLE[chosen][0]
 
@@ -713,12 +728,12 @@ def plot_prime_growth(rows: dict[str, list[dict[str, float]]], out: pathlib.Path
     ax.set_yscale("log")
     ax.set_xlabel("Prime index n + 1 (log scale; code uses zero-indexed n)")
     ax.set_ylabel("prime(n)")
-    ax.set_title(f"Prime growth curve: {label}", weight="bold")
+    ax.set_title(f"Prime growth curve for current winner: {label}", weight="bold")
     ax.grid(True, which="both", alpha=0.35)
     ax.text(
         0.02,
         0.95,
-        "This is a single selected series for readability; all series are available in one-second curves.",
+        "This chart follows the current winner; all series are available in the one-second reach plot.",
         transform=ax.transAxes,
         color=TEXT_MUTED,
         fontsize=9.5,
@@ -736,6 +751,13 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
     best_label = STYLE[best_algorithm][0]
     video_ratio = float(best["estimate"]) / VIDEO_TARGET_N * 100.0
 
+    under = best["measured_under"]
+    over = best["measured_over"]
+    if under is None:
+        under_text = "no under-one-second sample"
+    else:
+        under_text = f"`n = {format_int(under['n'])}` at `{under['seconds']:.6f}s`"
+
     lines = [
         "# Benchmark Summary",
         "",
@@ -744,8 +766,15 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
         "All comparisons below are same-run. Exact prime-index values are hardware-relative; the meaningful claim is relative lift between algorithms measured together.",
         "",
         f"Local best: `{best_label}` reaches an estimated `n = {format_int(float(best['estimate']))}` at one second.",
-        f"Measured under-one-second anchor: `n = {format_int(best['measured_under']['n'])}` at `{best['measured_under']['seconds']:.6f}s`.",
+        f"Measured under-one-second anchor: {under_text}.",
     ]
+    if under is not None and over is not None:
+        lines.append(
+            f"Interpolation bracket: log-log interpolation between `n = {format_int(under['n'])}` at `{under['seconds']:.6f}s` and `n = {format_int(over['n'])}` at `{over['seconds']:.6f}s`."
+        )
+        lines.append(
+            "Index note: benchmark rows use zero-indexed `n`; interpolation is performed on `n + 1` and converted back to zero-indexed `n`."
+        )
 
     if baseline is not None:
         gain = (float(best["estimate"]) / float(baseline["estimate"]) - 1.0) * 100.0
@@ -800,7 +829,8 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
             f"| {group} | {label} | `{best_row['n']:,}` | `{best_row['prime']:,}` | `{best_row['seconds']:.6f}` |"
         )
 
-    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with out.open("w", encoding="utf-8", newline="\n") as file:
+        file.write("\n".join(lines) + "\n")
 
 
 def main() -> None:

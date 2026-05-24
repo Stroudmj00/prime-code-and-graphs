@@ -12,11 +12,44 @@ Spirit-of-the-video note: this project is aligned with the video's algorithmic s
 
 | Comparison | Estimated one-second reach |
 |---|---:|
-| Pre-bitset wheel-30 segmented baseline | `27,007,283` |
-| Previous best, `sieve-lagrange-fsm` | `2,392,780,010` |
-| Current best, `sieve-lagrange-lehmer-fsm` | `12,230,629,361` |
+| Pre-bitset wheel-30 segmented baseline | `26,361,427` |
+| Formula skip, `sieve-lagrange-fsm` | `2,142,928,499` |
+| Lehmer + pi table, `sieve-lagrange-lehmer-fsm` | `31,167,475,494` |
+| Best, `sieve-lagrange-lehmer-axler-fsm` | `32,747,821,786` |
 
-That is a `45186.4%` increase over the pre-bitset local baseline. The current best local run proves `n = 1,000,000,000` in `0.120388s`, which is exactly the video's billion-prime headline target. Its interpolated one-second reach is `1223.06%` of that target.
+That is a `124126.3%` increase over the pre-bitset local baseline in the latest same-run benchmark. The current best local run proves `n = 1,000,000,000` in `0.039975s`, which is exactly the video's billion-prime headline target. Its interpolated one-second reach is `3274.78%` of that target.
+
+## Implemented: pi_lookup + Axler bounds for Lehmer fast-forward
+
+Added `sieve-lagrange-lehmer-axler-fsm`, which keeps the formula-assisted wheel-30 FSM segmented sieve but removes the largest remaining bottleneck in the fast-forward phase.
+
+The two changes:
+
+1. `make_prime_pi_lookup` builds a dense `pi(x)` prefix table from the base primes for each Lehmer-counting context, so recursive Lehmer calls can answer small prime-count subproblems in constant time instead of repeatedly binary-searching the base-prime list.
+2. `BoundStrategy::axler` uses Axler nth-prime upper/lower bounds to tighten the range between the fast-forward starting segment and the final search bound.
+
+The correctness contract is unchanged: the algorithm still computes exact zero-indexed `prime(n)`. The lookup table is only an internal prime-count accelerator; it is not a table of final prime answers.
+
+### Same-run: pi_lookup Lehmer against pi_lookup + Axler
+
+Comparison from the latest same-run benchmark:
+
+```text
+output/data/benchmark.csv
+```
+
+| n | `sieve-lagrange-lehmer-fsm` | `sieve-lagrange-lehmer-axler-fsm` | Axler delta |
+|---:|---:|---:|---:|
+| 1,000,000,000 | 0.040638 | 0.039975 | 1.6% faster |
+| 2,000,000,000 | 0.073609 | 0.074160 | 0.7% slower |
+| 4,000,000,000 | 0.136432 | 0.133154 | 2.4% faster |
+| 8,000,000,000 | 0.267871 | 0.257033 | 4.0% faster |
+| 16,000,000,000 | 0.518202 | 0.495567 | 4.4% faster |
+| 32,000,000,000 | 1.026330 | 0.978487 | 4.7% faster |
+
+The current same-run Lehmer + pi table path estimates `n = 31,167,475,494` at one second. Adding Axler bounds moves that estimate to `n = 32,747,821,786`, a `5.1%` same-run reach gain. Compared with the previous checked-in best before this optimization pass (`n = 12,230,629,361`), the new method is `167.8%` higher and `2.68x` larger.
+
+The headline `n = 32,747,821,786` is an interpolated crossing, not a directly measured row. It comes from log-log interpolation between `n = 32,000,000,000` at `0.978487s` and `n = 40,000,000,000` at `1.207230s`; the interpolation assumes locally smooth power-law-like scaling near the crossing.
 
 ## Implemented: Lehmer fast-forward plus FSM bitset sieve
 
@@ -38,13 +71,13 @@ Comparison from the same 3-repeat reach benchmark run:
 output/data/benchmark.csv
 ```
 
-| n | Previous `sieve-lagrange-fsm` | New `sieve-lagrange-lehmer-fsm` | Speedup | Faster |
+| n | `sieve-lagrange-fsm` | `sieve-lagrange-lehmer-fsm` | Speedup | Faster |
 |---:|---:|---:|---:|---:|
-| 1,000,000,000 | 0.419406 | 0.120388 | 3.48x | 71.3% |
-| 2,000,000,000 | 0.835971 | 0.211634 | 3.95x | 74.7% |
-| 4,000,000,000 | 1.670990 | 0.377699 | 4.42x | 77.4% |
+| 1,000,000,000 | 0.476752 | 0.040638 | 11.73x | 91.5% |
+| 2,000,000,000 | 0.931976 | 0.073609 | 12.66x | 92.1% |
+| 4,000,000,000 | 1.890760 | 0.136432 | 13.86x | 92.8% |
 
-At `n = 8,000,000,000`, the Lehmer variant still runs under one second at `0.690345s`. Its next measured sample, `n = 16,000,000,000`, takes `1.264290s`, giving a log-interpolated one-second reach of `n = 12,230,629,361`.
+In the latest benchmark CSV, `sieve-lagrange-fsm` is already over one second by `n = 4,000,000,000`, while `sieve-lagrange-lehmer-fsm` remains under one second through `n = 16,000,000,000` and crosses between `32,000,000,000` and `40,000,000,000`.
 
 Two researched variants were not promoted:
 
@@ -80,165 +113,27 @@ output/data/benchmark.csv
 | 100,000,000 | 0.892365 | 0.042828 | 20.84x | 95.2% |
 | 160,000,000 | 1.476400 | 0.072368 | 20.40x | 95.1% |
 
-At the video headline target, `sieve-lagrange-fsm` computes `prime(1,000,000,000) = 22,801,763,513` in `0.419406s`. The older FSM method returns the same prime in a direct check, but takes about `11.2s` on this machine.
+At the video headline target in the latest benchmark CSV, `sieve-lagrange-fsm` computes `prime(1,000,000,000) = 22,801,763,513` in `0.476752s`, before the later Lehmer and Axler refinements.
 
-## Implemented: wheel-30 FSM bitset segmented sieve
+## Earlier implementation layers
 
-Added `sieve-wheel30-bitset-fsm`, which keeps the compact one-byte-per-wheel-period layout but removes repeated multiply/divide/modulo work from the marking loop.
+The current benchmark CSV keeps the repo focused on one canonical evidence set, so older exploratory CSV snapshots are no longer tracked. The earlier optimization layers remain implemented and are still represented in `output/data/benchmark.csv` and `output/graphs/summary.md`:
 
-For each base prime, the implementation precomputes an eight-state wheel transition table:
+- `sieve-wheel30-bitset-fsm`: precomputes an eight-state wheel transition table so each base prime marks wheel-30 candidate bytes with table lookups and additions instead of repeated multiply/divide/modulo work.
+- `sieve-erat-odd` and `sieve-erat-segm-odd`: store and mark only odd candidates, with `2` handled separately.
+- `sieve-wheel30-bitset`: compresses one modulo-30 wheel period into a byte, using bits for `{1, 7, 11, 13, 17, 19, 23, 29}`.
+- `sieve-wheel30-indexed`: allocates only the eight valid modulo-30 candidates per period and walks the wheel delta pattern `{6, 4, 2, 4, 2, 4, 6, 2}`.
+- tiered deterministic Miller-Rabin: selects smaller deterministic base sets for bounded candidate ranges before falling back to the full 64-bit deterministic base set.
 
-```text
-state -> mark bit, byte-period advance, next multiple delta
-```
-
-The inner marking loop now updates the composite byte with table lookups and additions. This preserves the same wheel-30 candidate set as `sieve-wheel30-bitset`, but makes marking much cheaper at high `n`.
-
-### Before / After: FSM bitset against previous fastest
-
-Comparison from the same 3-repeat reach benchmark run:
-
-```text
-output/data/benchmark.reach-100m-fsm.csv
-```
-
-| n | Previous `sieve-wheel30-bitset` | New `sieve-wheel30-bitset-fsm` | Speedup | Faster |
-|---:|---:|---:|---:|---:|
-| 10,000,000 | 0.126758 | 0.062832 | 2.02x | 50.4% |
-| 20,000,000 | 0.270713 | 0.137084 | 1.97x | 49.4% |
-| 40,000,000 | 0.570602 | 0.283833 | 2.01x | 50.3% |
-| 80,000,000 | 1.224690 | 0.622193 | 1.97x | 49.2% |
-
-At the target milestone, `sieve-wheel30-bitset-fsm` computed `prime(100,000,000) = 2,038,074,751` in `0.798666s` in the earlier `benchmark.reach-100m-fsm.csv` run. A separate direct seven-run target check also returned the same prime every time, with a median around `0.793s`.
-
-## Implemented: packed odd-only Sieve of Eratosthenes
-
-Added `sieve-erat-odd`, which keeps the dense Sieve of Eratosthenes but stores and marks only odd candidates. The composite table maps:
-
-```text
-index i => 2*i + 3
-```
-
-`2` is handled up front, and the mark loop advances by `2*p`, avoiding every even multiple. The implementation uses a packed `std::vector<bool>` table so the odd-only candidate reduction also cuts memory pressure at larger bounds.
-
-### Before / After: dense sieve against odd-only dense sieve
-
-Comparison from the same 7-repeat benchmark run:
-
-```text
-output/data/benchmark.after-odd-sieves.csv
-```
-
-| n | Previous `sieve-erat` | New `sieve-erat-odd` | Speedup | Faster |
-|---:|---:|---:|---:|---:|
-| 524,288 | 0.019443 | 0.011117 | 1.75x | 42.8% |
-| 1,000,000 | 0.042692 | 0.021991 | 1.94x | 48.5% |
-| 2,000,000 | 0.098308 | 0.053648 | 1.83x | 45.4% |
-| 5,000,000 | 0.306420 | 0.155944 | 1.96x | 49.1% |
-| 10,000,000 | 0.736943 | 0.351471 | 2.10x | 52.3% |
-
-## Implemented: odd-only segmented Sieve of Eratosthenes
-
-Added `sieve-erat-segm-odd`, which applies the same odd-only indexing to the segmented sieve. Each segment stores only odd offsets, skips prime `2` in the base-prime marking loop, adjusts the first multiple to an odd multiple, then marks by `2*p`.
-
-### Before / After: segmented sieve against odd-only segmented sieve
-
-Comparison from the same 7-repeat benchmark run:
-
-```text
-output/data/benchmark.after-odd-sieves.csv
-```
-
-| n | Previous `sieve-erat-segm` | New `sieve-erat-segm-odd` | Speedup | Faster |
-|---:|---:|---:|---:|---:|
-| 524,288 | 0.020275 | 0.009618 | 2.11x | 52.6% |
-| 1,000,000 | 0.039731 | 0.018584 | 2.14x | 53.2% |
-| 2,000,000 | 0.082207 | 0.037888 | 2.17x | 53.9% |
-| 5,000,000 | 0.220443 | 0.101519 | 2.17x | 53.9% |
-| 10,000,000 | 0.457694 | 0.210510 | 2.17x | 54.0% |
-
-## Implemented: wheel-30 bitset segmented sieve
-
-Added `sieve-wheel30-bitset`, which compresses a full wheel period into one byte:
-
-```text
-bit 0..7 => {1, 7, 11, 13, 17, 19, 23, 29} mod 30
-```
-
-Compared with `sieve-wheel30-indexed`, this reduces the segment array from eight bytes per period to one byte per period and counts complete periods with `std::popcount()`.
-
-### Before / After: compact bitset against previous fastest
-
-Comparison from the same 7-repeat benchmark run:
-
-```text
-output/data/benchmark.after-wheel-bitset.csv
-```
-
-| n | Previous `sieve-wheel30-indexed` | New `sieve-wheel30-bitset` | Speedup | Faster |
-|---:|---:|---:|---:|---:|
-| 16,384 | 0.000243 | 0.000101 | 2.41x | 58.4% |
-| 65,536 | 0.000989 | 0.000476 | 2.08x | 51.9% |
-| 262,144 | 0.004405 | 0.002278 | 1.93x | 48.3% |
-| 524,288 | 0.009362 | 0.004744 | 1.97x | 49.3% |
-| 1,000,000 | 0.018271 | 0.009857 | 1.85x | 46.1% |
-| 2,000,000 | 0.036836 | 0.022145 | 1.66x | 39.9% |
-| 5,000,000 | 0.096865 | 0.060201 | 1.61x | 37.9% |
-| 10,000,000 | 0.210786 | 0.135409 | 1.56x | 35.8% |
-
-Against the older `sieve-wheel30-segm` path in the same run, the bitset path improves `n=10,000,000` from `0.393875s` to `0.135409s`, a `2.91x` speedup.
-
-Against the plain segmented sieve in the same run, it improves `n=10,000,000` from `0.473282s` to `0.135409s`, a `3.50x` speedup.
-
-The current graph dataset now uses:
-
-```text
-output/data/benchmark.csv
-```
-
-## Implemented: wheel-indexed segmented sieve
-
-Added `sieve-wheel30-indexed`, a true modulo-30 candidate layout. Instead of allocating one composite slot per integer and checking `n % 30` while counting, it allocates eight candidate slots per period of thirty integers.
-
-Composite marking also walks only wheel-valid multipliers, using the wheel delta pattern:
-
-```text
-{6, 4, 2, 4, 2, 4, 6, 2}
-```
-
-At `n=10,000,000`, this improved the old `sieve-wheel30-segm` path from `0.360887s` to `0.213921s` in `output/data/benchmark.after-wheel-indexed.csv`, a `1.69x` speedup.
-
-## Implemented: tiered Miller-Rabin bases
-
-The original portable C++ reproduction always tested the same 12 Miller-Rabin bases. The reference notes use smaller deterministic base sets for bounded input ranges, so `is_prime_miller_rabin()` now selects a base tier by candidate value.
-
-Comparison uses the same sample matrix and `--repeats 3` data files:
-
-```text
-output/data/benchmark.before-mr-tiering.csv
-output/data/benchmark.after-mr-tiering.r3.csv
-```
-
-| n | Before seconds | After seconds | Speedup | Faster |
-|---:|---:|---:|---:|---:|
-| 512 | 0.001293500 | 0.000128000 | 10.10x | 90.1% |
-| 2,048 | 0.006494400 | 0.001107000 | 5.87x | 83.0% |
-| 8,192 | 0.032232400 | 0.006458300 | 4.99x | 80.0% |
-| 16,384 | 0.069365400 | 0.014740900 | 4.71x | 78.7% |
-| 32,768 | 0.150694000 | 0.032188300 | 4.68x | 78.6% |
-| 65,536 | 0.344786000 | 0.071993700 | 4.79x | 79.1% |
+This keeps the repo readable for recruiters: the current story is benchmarked from one CSV, and the lower-level implementation history explains what changed without mixing stale timing snapshots into the headline result.
 
 ## Validation
 
 ```console
 py -3 scripts/build.py
 py -3 scripts/verify.py --fast
-py -3 scripts/bench.py --repeats 7 --timeout 8 --full -o output/data/benchmark.after-mr-tiering.csv
-py -3 scripts/bench.py --repeats 7 --timeout 8 --full -o output/data/benchmark.after-wheel-indexed.csv
-py -3 scripts/bench.py --repeats 7 --timeout 8 --full -o output/data/benchmark.after-wheel-bitset.csv
-py -3 scripts/bench.py --repeats 7 --timeout 8 --full -o output/data/benchmark.after-odd-sieves.csv
 py -3 scripts/bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output/data/benchmark.csv
-py -3 scripts/compare.py --algorithms sieve-lagrange-fsm,sieve-lagrange-lehmer-fsm --n 1000000000,4000000000,8000000000 --repeats 3 --timeout 20
+py -3 scripts/compare.py --algorithms sieve-lagrange-lehmer-fsm,sieve-lagrange-lehmer-axler-fsm --n 1000000000,4000000000,8000000000,16000000000,32000000000 --repeats 3 --timeout 20
 py -3 scripts/plot.py
 ```
 

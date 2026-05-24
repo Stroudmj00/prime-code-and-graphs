@@ -48,7 +48,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Compare selected prime benchmark algorithms quickly")
     parser.add_argument(
         "--algorithms",
-        default="sieve-lagrange-fsm,sieve-lagrange-lehmer-fsm,sieve-lagrange-lehmer-fsm-s17",
+        default="sieve-lagrange-fsm,sieve-lagrange-lehmer-fsm,sieve-lagrange-lehmer-axler-fsm",
         help="Comma-separated algorithms to compare",
     )
     parser.add_argument(

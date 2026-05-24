@@ -35,6 +35,7 @@ ALGORITHMS = {
     "sieve-wheel30-bitset-fsm": [0, 16_384, 65_536, 262_144, 524_288, 1_000_000, 2_000_000],
     "sieve-lagrange-fsm": [0, 16_384, 65_536, 262_144, 524_288, 1_000_000, 2_000_000],
     "sieve-lagrange-lehmer-fsm": [0, 16_384, 65_536, 262_144, 524_288, 1_000_000, 2_000_000],
+    "sieve-lagrange-lehmer-axler-fsm": [0, 16_384, 65_536, 262_144, 524_288, 1_000_000, 2_000_000],
 }
 
 
@@ -135,7 +136,7 @@ def main() -> None:
     parser.add_argument(
         "--max-n",
         type=int,
-        default=16_000_000_000,
+        default=64_000_000_000,
         help="Largest n to try when --reach-one-second is enabled",
     )
     parser.add_argument(
@@ -180,10 +181,28 @@ def main() -> None:
                 8_000_000_000,
             ]
         )
+        algorithms["sieve-lagrange-lehmer-axler-fsm"].extend(
+            [
+                5_000_000,
+                10_000_000,
+                20_000_000,
+                40_000_000,
+                80_000_000,
+                100_000_000,
+                160_000_000,
+                1_000_000_000,
+                2_000_000_000,
+                4_000_000_000,
+                8_000_000_000,
+                16_000_000_000,
+                32_000_000_000,
+                40_000_000_000,
+            ]
+        )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=["algorithm", "n", "prime", "seconds"])
+        writer = csv.DictWriter(file, fieldnames=["algorithm", "n", "prime", "seconds"], lineterminator="\n")
         writer.writeheader()
 
         for algorithm, initial_samples in algorithms.items():

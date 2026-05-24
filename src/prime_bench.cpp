@@ -27,39 +27,106 @@ static u64 parse_u64(const char* text) {
 		if (*cursor < '0' || *cursor > '9') {
 			throw std::invalid_argument("expected an unsigned integer");
 		}
-		value = value * 10 + static_cast<u64>(*cursor - '0');
+		const u64 digit = static_cast<u64>(*cursor - '0');
+		if (value > (std::numeric_limits<u64>::max() - digit) / 10) {
+			throw std::overflow_error("unsigned integer is too large");
+		}
+		value = value * 10 + digit;
 	}
 	return value;
 }
 
-static u64 upper_bound_for_nth_prime(u64 n_zero_indexed) {
-	const long double n = static_cast<long double>(n_zero_indexed + 1);
-	if (n_zero_indexed < 6) {
-		return 16;
+static u64 ordinal_from_zero_index(u64 n_zero_indexed) {
+	if (n_zero_indexed == std::numeric_limits<u64>::max()) {
+		throw std::overflow_error("prime index is too large");
 	}
-	const long double estimate = n * (std::log(n) + std::log(std::log(n))) + 32.0L;
+	return n_zero_indexed + 1;
+}
+
+static u64 checked_estimate_to_u64(long double estimate) {
+	if (!std::isfinite(estimate) || estimate < 0.0L) {
+		throw std::overflow_error("nth-prime estimate is out of range");
+	}
+	constexpr long double max_u64 = static_cast<long double>(std::numeric_limits<u64>::max());
+	if (estimate > max_u64) {
+		throw std::overflow_error("nth-prime estimate exceeds uint64 range");
+	}
 	return static_cast<u64>(estimate);
 }
 
+static u64 upper_bound_for_nth_prime(u64 n_zero_indexed) {
+	if (n_zero_indexed < 6) {
+		return 16;
+	}
+	const long double n = static_cast<long double>(ordinal_from_zero_index(n_zero_indexed));
+	const long double estimate = n * (std::log(n) + std::log(std::log(n))) + 32.0L;
+	return checked_estimate_to_u64(estimate);
+}
+
+static u64 axler_upper_bound_for_nth_prime(u64 n_zero_indexed) {
+	if (n_zero_indexed < 6) {
+		return 16;
+	}
+	const u64 ordinal = ordinal_from_zero_index(n_zero_indexed);
+	if (ordinal < 46'254'381ULL) {
+		return upper_bound_for_nth_prime(n_zero_indexed);
+	}
+	const long double n = static_cast<long double>(ordinal);
+	const long double log_n = std::log(n);
+	const long double log_log_n = std::log(log_n);
+	const long double inverse_log = 1.0L / log_n;
+	const long double estimate =
+		n * (
+			log_n + log_log_n - 1.0L +
+			(log_log_n - 2.0L) * inverse_log -
+			((log_log_n * log_log_n - 6.0L * log_log_n + 10.667L) * 0.5L * inverse_log * inverse_log)
+		);
+	return checked_estimate_to_u64(estimate + 32.0L);
+}
+
 static u64 lower_bound_for_nth_prime(u64 n_zero_indexed) {
-	const long double n = static_cast<long double>(n_zero_indexed + 1);
 	if (n_zero_indexed < 6) {
 		return 0;
 	}
+	const long double n = static_cast<long double>(ordinal_from_zero_index(n_zero_indexed));
 	const long double log_n = std::log(n);
 	const long double log_log_n = std::log(log_n);
 	const long double estimate = n * (log_n + log_log_n - 1.0L + (log_log_n - 2.1L) / log_n);
 	if (estimate <= 0.0L) {
 		return 0;
 	}
-	return static_cast<u64>(estimate);
+	return checked_estimate_to_u64(estimate);
+}
+
+static u64 axler_lower_bound_for_nth_prime(u64 n_zero_indexed) {
+	if (n_zero_indexed < 6) {
+		return 0;
+	}
+	const u64 ordinal = ordinal_from_zero_index(n_zero_indexed);
+	if (ordinal < 46'254'381ULL) {
+		return lower_bound_for_nth_prime(n_zero_indexed);
+	}
+	const long double n = static_cast<long double>(ordinal);
+	const long double log_n = std::log(n);
+	const long double log_log_n = std::log(log_n);
+	const long double inverse_log = 1.0L / log_n;
+	const long double estimate =
+		n * (
+			log_n + log_log_n - 1.0L +
+			(log_log_n - 2.0L) * inverse_log -
+			((log_log_n * log_log_n - 6.0L * log_log_n + 11.321L) * 0.5L * inverse_log * inverse_log)
+		);
+	if (estimate <= 0.0L) {
+		return 0;
+	}
+	return checked_estimate_to_u64(estimate);
 }
 
 static u64 approximate_nth_prime(u64 n_zero_indexed) {
-	const long double n = static_cast<long double>(n_zero_indexed + 1);
 	if (n_zero_indexed < 6) {
 		return 16;
 	}
+	const long double n = static_cast<long double>(ordinal_from_zero_index(n_zero_indexed));
 	const long double log_n = std::log(n);
 	const long double log_log_n = std::log(log_n);
 	const long double inverse_log = 1.0L / log_n;
@@ -71,7 +138,7 @@ static u64 approximate_nth_prime(u64 n_zero_indexed) {
 	if (estimate <= 0.0L) {
 		return 0;
 	}
-	return static_cast<u64>(estimate);
+	return checked_estimate_to_u64(estimate);
 }
 
 static u64 isqrt_floor(u64 value) {
@@ -187,7 +254,8 @@ static bool is_prime_miller_rabin(u64 n) {
 	constexpr u64 bases_19m[] = {2, 299417};
 	constexpr u64 bases_4b[] = {2, 7, 61};
 	constexpr u64 bases_1t[] = {2, 13, 23, 1662803};
-	constexpr u64 bases_64[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
+	constexpr u64 bases_341t[] = {2, 3, 5, 7, 11, 13, 17};
+	constexpr u64 bases_64[] = {2, 325, 9375, 28178, 450775, 9780504, 1795265022};
 
 	if (n < 5329) {
 		return test_bases(bases_5k, std::size(bases_5k));
@@ -200,6 +268,9 @@ static bool is_prime_miller_rabin(u64 n) {
 	}
 	if (n < 1122004669633ULL) {
 		return test_bases(bases_1t, std::size(bases_1t));
+	}
+	if (n < 341550071728321ULL) {
+		return test_bases(bases_341t, std::size(bases_341t));
 	}
 	return test_bases(bases_64, std::size(bases_64));
 }
@@ -660,6 +731,9 @@ struct WheelPrimeFsmState {
 };
 
 static WheelPrimeFsmState make_wheel30_fsm_state(u64 p, u64 start_value) {
+	if (p > std::numeric_limits<std::uint32_t>::max() / 6) {
+		throw std::overflow_error("wheel FSM step table exceeds 32-bit range");
+	}
 	WheelPrimeFsmState state{};
 	state.p = p;
 
@@ -939,10 +1013,14 @@ static u64 prime_count_legendre(u64 x, const std::vector<std::uint32_t>& primes)
 static u64 prime_count_lehmer_rec(
 	u64 x,
 	const std::vector<std::uint32_t>& primes,
+	const std::vector<std::uint32_t>& pi_lookup,
 	std::unordered_map<u64, u64>& cache
 ) {
 	if (x < 2) {
 		return 0;
+	}
+	if (x < pi_lookup.size()) {
+		return pi_lookup[static_cast<std::size_t>(x)];
 	}
 	if (!primes.empty() && x <= primes.back()) {
 		return static_cast<u64>(std::upper_bound(primes.begin(), primes.end(), x) - primes.begin());
@@ -956,20 +1034,20 @@ static u64 prime_count_lehmer_rec(
 	const u64 x_quarter = isqrt_floor(isqrt_floor(x));
 	const u64 x_sqrt = isqrt_floor(x);
 	const u64 x_cbrt = icbrt_floor(x);
-	const u64 a = prime_count_lehmer_rec(x_quarter, primes, cache);
-	const u64 b = prime_count_lehmer_rec(x_sqrt, primes, cache);
-	const u64 c = prime_count_lehmer_rec(x_cbrt, primes, cache);
+	const u64 a = prime_count_lehmer_rec(x_quarter, primes, pi_lookup, cache);
+	const u64 b = prime_count_lehmer_rec(x_sqrt, primes, pi_lookup, cache);
+	const u64 c = prime_count_lehmer_rec(x_cbrt, primes, pi_lookup, cache);
 
 	u64 result = phi_legendre(x, static_cast<std::size_t>(a), primes);
 	result += ((b + a - 2) * (b - a + 1)) / 2;
 
 	for (u64 i = a; i < b; ++i) {
 		const u64 w = x / primes[static_cast<std::size_t>(i)];
-		result -= prime_count_lehmer_rec(w, primes, cache);
+		result -= prime_count_lehmer_rec(w, primes, pi_lookup, cache);
 		if (i < c) {
-			const u64 limit = prime_count_lehmer_rec(isqrt_floor(w), primes, cache);
+			const u64 limit = prime_count_lehmer_rec(isqrt_floor(w), primes, pi_lookup, cache);
 			for (u64 j = i; j < limit; ++j) {
-				result -= prime_count_lehmer_rec(w / primes[static_cast<std::size_t>(j)], primes, cache) - j;
+				result -= prime_count_lehmer_rec(w / primes[static_cast<std::size_t>(j)], primes, pi_lookup, cache) - j;
 			}
 		}
 	}
@@ -978,14 +1056,25 @@ static u64 prime_count_lehmer_rec(
 	return result;
 }
 
-static u64 prime_count_lehmer(u64 x, const std::vector<std::uint32_t>& primes) {
-	std::unordered_map<u64, u64> cache;
-	cache.reserve(4096);
-	return prime_count_lehmer_rec(x, primes, cache);
+static std::vector<std::uint32_t> make_prime_pi_lookup(const std::vector<std::uint32_t>& primes) {
+	if (primes.empty()) {
+		return {};
+	}
+	const std::size_t limit = static_cast<std::size_t>(primes.back());
+	std::vector<std::uint32_t> lookup(limit + 1, 0);
+	std::uint32_t count = 0;
+	std::size_t prime_index = 0;
+	for (std::size_t value = 0; value <= limit; ++value) {
+		if (prime_index < primes.size() && primes[prime_index] == value) {
+			++count;
+			++prime_index;
+		}
+		lookup[value] = count;
+	}
+	return lookup;
 }
 
-static u64 lagrange_skip_base(u64 n, u64 segment_width, u64 bound) {
-	u64 lower = lower_bound_for_nth_prime(n);
+static u64 lagrange_skip_base_from_lower(u64 lower, u64 segment_width, u64 bound) {
 	if (lower <= segment_width * 2 || lower >= bound) {
 		return 0;
 	}
@@ -999,6 +1088,11 @@ static u64 lagrange_skip_base(u64 n, u64 segment_width, u64 bound) {
 enum class SkipStrategy {
 	dusart_lower,
 	approximate_tight,
+};
+
+enum class BoundStrategy {
+	classic,
+	axler,
 };
 
 template <typename PrimeCounter>
@@ -1034,23 +1128,37 @@ static u64 nth_prime_lagrange_fsm_impl(
 	u64 n,
 	u64 segment_periods,
 	bool use_lehmer_count,
-	SkipStrategy skip_strategy
+	SkipStrategy skip_strategy,
+	BoundStrategy bound_strategy = BoundStrategy::classic
 ) {
 	if (n < 3) {
 		return small_primes[n];
 	}
 
 	const u64 segment_width = segment_periods * 30;
-	u64 bound = upper_bound_for_nth_prime(n);
+	u64 bound = bound_strategy == BoundStrategy::axler
+		? axler_upper_bound_for_nth_prime(n)
+		: upper_bound_for_nth_prime(n);
 	for (;;) {
 		const u64 root = isqrt_floor(bound) + 1;
 		const auto base_primes = simple_primes_up_to(root);
+		const auto pi_lookup = use_lehmer_count ? make_prime_pi_lookup(base_primes) : std::vector<std::uint32_t>{};
+		std::unordered_map<u64, u64> lehmer_cache;
+		if (use_lehmer_count) {
+			lehmer_cache.reserve(4096);
+		}
 		const auto prime_count = [&](u64 x) {
-			return use_lehmer_count ? prime_count_lehmer(x, base_primes) : prime_count_legendre(x, base_primes);
+			return use_lehmer_count
+				? prime_count_lehmer_rec(x, base_primes, pi_lookup, lehmer_cache)
+				: prime_count_legendre(x, base_primes);
 		};
 		u64 segment_base = skip_strategy == SkipStrategy::approximate_tight
 			? find_skip_base_from_estimate(n, segment_width, bound, approximate_nth_prime(n), prime_count)
-			: lagrange_skip_base(n, segment_width, bound);
+			: lagrange_skip_base_from_lower(
+				bound_strategy == BoundStrategy::axler ? axler_lower_bound_for_nth_prime(n) : lower_bound_for_nth_prime(n),
+				segment_width,
+				bound
+			);
 		u64 count = 3;
 
 		if (segment_base > 0) {
@@ -1152,9 +1260,13 @@ static u64 nth_prime_lagrange_lehmer_fsm_s19(u64 n) {
 	return nth_prime_lagrange_fsm_impl(n, 1 << 19, true, SkipStrategy::dusart_lower);
 }
 
+static u64 nth_prime_lagrange_lehmer_axler_fsm(u64 n) {
+	return nth_prime_lagrange_fsm_impl(n, 1 << 16, true, SkipStrategy::dusart_lower, BoundStrategy::axler);
+}
+
 static void print_usage(const char* exe) {
 	std::cerr << "Usage: " << exe << " <algorithm> <zero-indexed-n> [--time]\n"
-	          << "\nAlgorithms:\n"
+	          << "\nPrimary algorithms:\n"
 	          << "  naive-iterate\n"
 	          << "  sqrt-iterate\n"
 	          << "  miller-rabin-iterate\n"
@@ -1169,6 +1281,8 @@ static void print_usage(const char* exe) {
 	          << "  sieve-wheel30-bitset-fsm\n"
 	          << "  sieve-lagrange-fsm\n"
 	          << "  sieve-lagrange-lehmer-fsm\n"
+	          << "  sieve-lagrange-lehmer-axler-fsm\n"
+	          << "\nExperimental tuning variants (verified, not included in headline graphs):\n"
 	          << "  sieve-lagrange-lehmer-tight-fsm\n"
 	          << "  sieve-lagrange-lehmer-fsm-s17\n"
 	          << "  sieve-lagrange-lehmer-fsm-s18\n"
@@ -1224,6 +1338,8 @@ int main(int argc, char** argv) {
 		prime = nth_prime_lagrange_lehmer_fsm_s18(n);
 	} else if (algorithm == "sieve-lagrange-lehmer-fsm-s19") {
 		prime = nth_prime_lagrange_lehmer_fsm_s19(n);
+	} else if (algorithm == "sieve-lagrange-lehmer-axler-fsm") {
+		prime = nth_prime_lagrange_lehmer_axler_fsm(n);
 	} else {
 		throw std::invalid_argument("unknown algorithm");
 	}
