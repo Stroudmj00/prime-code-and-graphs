@@ -43,7 +43,7 @@ measured over 1s:       n = 40,000,000,000 in 1.063420s
 
 The pre-bitset wheel-30 segmented baseline reaches an estimated `n = 26,896,738` at one second. The Lehmer/Axler/phi7-assisted FSM method reaches `n = 37,415,030,844`, which is `139006.2%` higher on this machine.
 
-The concrete milestone `n = 1,000,000,000` is exactly the video's headline target. The interpolated one-second reach, `n = 37,415,030,844`, is `3741.50%` of that target. The exact index is still hardware-relative; the durable claim is the same-run improvement between algorithms in this repo. Against the previous checked-in best (`sieve-lagrange-lehmer-axler-fsm`), the new `phi7` method is `9.1%` higher in the same benchmark run.
+The concrete milestone `n = 1,000,000,000` is exactly the video's headline target. The interpolated one-second reach, `n = 37,415,030,844`, is `3741.50%` of that target. The exact index is still hardware-relative; the durable claim is the same-run improvement between algorithms in this repo. Against the previous checked-in best (`sieve-lagrange-lehmer-axler-fsm`, `n = 34,308,358,230`), the new `phi7` method is `9.1%` higher in the same benchmark run.
 
 ## Visualization Guide
 
