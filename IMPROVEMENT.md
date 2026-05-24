@@ -10,6 +10,8 @@ Hardware note: the exact one-second prime index is relative to the processor, co
 
 Spirit-of-the-video note: this project is aligned with the video's algorithmic speedrun idea, but it is not a full reproduction of every low-level implementation detail or every algorithm in the reference repo. The baseline group is a video-inspired subset; the "mine" group contains portable C++ variants added here.
 
+For the method-by-method explanation and reference links, see [METHODS.md](METHODS.md). This file is the measurement log: what changed, what improved, and what did not get promoted.
+
 Indexing note: the conventional 1,000,000,000th prime is `prime(999,999,999) = 22,801,763,489` in this repo's zero-indexed notation. The checked benchmark milestone `prime(1,000,000,000) = 22,801,763,513` is one index later.
 
 Integrity note: the fastest variants are exact formula-assisted segmented sieves. They compute exact `pi(base - 1)` with Legendre/Lehmer-style counting, fast-forward the marking state to a near-target segment, and still sieve/count candidates until the requested zero-indexed `prime(n)` is reached. The `pi_lookup` table is generated from base primes at runtime for prime-count subproblems; it is not a stored table of final nth-prime answers.

@@ -1198,6 +1198,11 @@ static std::vector<std::uint32_t> make_prime_pi_lookup(const std::vector<std::ui
 	return lookup;
 }
 
+// Shared exact fast-forward path:
+// 1. bound the target prime,
+// 2. count primes before a near-target segment with Legendre or Lehmer,
+// 3. initialize wheel-30 marking state at that segment,
+// 4. sieve/count forward until the exact zero-indexed prime(n) is found.
 static u64 lagrange_skip_base_from_lower(u64 lower, u64 segment_width, u64 bound) {
 	if (lower <= segment_width * 2 || lower >= bound) {
 		return 0;

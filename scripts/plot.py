@@ -469,6 +469,7 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
         "",
         "All comparisons below are same-run. Exact prime-index values are hardware-relative; the meaningful claim is relative lift between algorithms measured together.",
         "The fastest variants use exact prime-count fast-forwarding plus a final segmented sieve; the `pi_lookup` accelerator is not a stored table of final nth-prime answers.",
+        "See `METHODS.md` for the method-by-method explanation and reference links.",
         "",
         f"Local best: `{best_label}` reaches an estimated `n = {format_int(float(best['estimate']))}` at one second.",
         f"Measured under-one-second anchor: {under_text}.",
@@ -483,14 +484,9 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
 
     if baseline is not None:
         gain = (float(best["estimate"]) / float(baseline["estimate"]) - 1.0) * 100.0
-        if video_ratio >= 100.0:
-            video_line = (
-                f"This run reaches `~{video_ratio:.2f}%` of the repo's zero-indexed billion-scale milestone at the estimated one-second crossing."
-            )
-        else:
-            video_line = (
-                f"This run reaches `~{video_ratio:.2f}%` of the repo's zero-indexed billion-scale milestone at the estimated one-second crossing."
-            )
+        video_line = (
+            f"This run reaches `~{video_ratio:.2f}%` of the repo's zero-indexed billion-scale milestone at the estimated one-second crossing."
+        )
         lines.extend(
             [
                 f"Best vs. pre-bitset wheel-30 baseline: `{gain:.1f}%` higher estimated one-second reach.",

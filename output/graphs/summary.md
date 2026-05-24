@@ -6,6 +6,7 @@ Indexing note: this repo follows the upstream zero-indexed convention `prime(0) 
 
 All comparisons below are same-run. Exact prime-index values are hardware-relative; the meaningful claim is relative lift between algorithms measured together.
 The fastest variants use exact prime-count fast-forwarding plus a final segmented sieve; the `pi_lookup` accelerator is not a stored table of final nth-prime answers.
+See `METHODS.md` for the method-by-method explanation and reference links.
 
 Local best: `Lehmer + Axler + phi7` reaches an estimated `n = 37,415,030,844` at one second.
 Measured under-one-second anchor: `n = 32,000,000,000` at `0.865979s`.

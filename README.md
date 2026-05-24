@@ -17,6 +17,8 @@ Portable, video-inspired reproduction of the algorithm/code-and-graphs side of
 
 This project uses the same "what can we compute in one second?" framing as the video, but within a clearly defined scope: portable C++ reimplementation and incremental optimization, not Linux IR-level execution.
 
+Start with [METHODS.md](METHODS.md) for a plain-English explanation of every algorithm, why the fast path is still an exact `prime(n)` computation, and the references behind the math.
+
 ## Scope, Honesty, and Trust Boundaries
 
 The scope is intentionally video-inspired, not a full reimplementation of every reference implementation detail.
@@ -79,31 +81,14 @@ The runtime plot is the audit view: it cleanly separates the video-inspired base
 
 ## Algorithms
 
-This project now separates the video-inspired baseline subset from the variants added in this repo.
+This project separates the video-inspired baseline subset from the variants added in this repo. [METHODS.md](METHODS.md) has the detailed walkthrough and reference links; the short version is:
 
-Video-inspired baseline subset:
+| Group | Methods |
+|---|---|
+| Video-inspired baseline subset | naive iteration, square-root trial division, deterministic Miller-Rabin iteration, Sieve of Eratosthenes, segmented Sieve of Eratosthenes, wheel-30 segmented sieve |
+| My portable C++ improvements | odd-only sieves, wheel-30 indexing, bitset packing, stateful/FSM marking, Legendre fast-forward, Lehmer fast-forward, generated `pi_lookup`, Axler bounds, and the promoted `phi7` cache |
 
-- naive iteration
-- square-root trial division
-- deterministic Miller-Rabin iteration
-- Sieve of Eratosthenes
-- segmented Sieve of Eratosthenes
-- wheel-30 segmented sieve
-
-My portable C++ improvements:
-
-- odd-only Sieve of Eratosthenes
-- odd-only segmented Sieve of Eratosthenes
-- wheel-30 indexed segmented sieve
-- wheel-30 bitset segmented sieve
-- wheel-30 stateful bitset segmented sieve
-- wheel-30 FSM bitset segmented sieve
-- Lagrange/Legendre fast-forward plus wheel-30 FSM bitset segmented sieve
-- Lehmer fast-forward plus wheel-30 FSM bitset segmented sieve
-- Lehmer fast-forward with an internal `pi_lookup` table and Axler nth-prime bounds plus wheel-30 FSM bitset segmented sieve
-- Lehmer/Axler fast-forward with a deeper seven-prime `phi` cache (`phi7`) for large-`n` prime counting
-
-The last four methods are responsible for the suspicious-looking speed jump. They are not shortcutting to a stored final answer; they replace wasted middle segments with exact prime-count fast-forwarding and then run the final segmented sieve.
+The large jump comes from replacing wasted middle segments with exact prime-count fast-forwarding, then running the final segmented sieve. It is not a stored-answer shortcut.
 
 ## Build
 
@@ -181,4 +166,4 @@ The one-second reach values are log-interpolated between measured samples around
 
 `output/data/benchmark.meta.json` records the local run context for the checked-in benchmark data. Future benchmark runs write a fresh metadata sidecar next to the requested CSV.
 
-See `IMPROVEMENT.md` for the measured implementation improvements: the `phi7` Lehmer cache, `pi_lookup`-accelerated Lehmer counting with Axler bounds, Lehmer fast-forwarding, Lagrange/Legendre fast-forwarding, Miller-Rabin base tiering, wheel-30 indexing, wheel-30 bitset packing, wheel-30 FSM marking, packed odd-only dense sieving, and odd-only segmented sieving.
+See [METHODS.md](METHODS.md) for the method-by-method explanation and references. See [IMPROVEMENT.md](IMPROVEMENT.md) for the benchmark evidence behind the promoted changes.
