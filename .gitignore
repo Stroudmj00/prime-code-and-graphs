@@ -1,0 +1,13 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Local build products. The source, benchmark CSVs, and rendered graph PNGs are committed.
+output/bin/
+*.exe
+*.obj
+*.o
+*.pdb
