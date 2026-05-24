@@ -5,6 +5,18 @@
 Portable, video-inspired reproduction of the algorithm/code-and-graphs side of
 ["One second to find the BILLIONth PRIME"](https://www.youtube.com/watch?v=uJkoI5TnKzA).
 
+## Video Rules Up Front
+
+This repo treats the video's challenge as a simple contract:
+
+- Implement `prime(n)`: given an index `n`, return the exact nth prime.
+- Keep the upstream zero-indexed convention: `prime(0) = 2`.
+- Race the one-second wall: measure how large an `n` each algorithm can reach in one second on the same machine.
+- Improve algorithms, not answers: no hardcoded final `prime(n)` values and no downloaded nth-prime lookup table.
+- Preserve exactness: fast paths may use exact prime-counting formulas to skip wasted work, but they still finish by sieving/counting to the requested prime.
+- Compare honestly: absolute one-second scores are hardware-relative, so same-run percentage improvement is the meaningful claim.
+- State the scope: this is a portable C++ implementation and extension of the video idea, not a byte-for-byte reproduction of the Linux/LLVM reference implementation.
+
 ## Recruiter Snapshot
 
 **What this is:** a reproducible, inspectable implementation of the same one-second nth-prime challenge, with a complete benchmark-and-graph workflow.

@@ -4,7 +4,9 @@ This document is the plain-English map of the benchmark. It explains what each a
 
 The headline result is not a claim that this repo reproduces the video's Linux/LLVM implementation byte-for-byte. It is a portable C++ implementation of the same one-second nth-prime challenge, with additional exact accelerators layered on top.
 
-## Challenge Contract
+## Video Rules / Challenge Contract
+
+This is the rule set used throughout the repo:
 
 - Input: a zero-indexed prime index `n`, matching the upstream convention `prime(0) = 2`.
 - Output: the exact value of `prime(n)`.
