@@ -30,6 +30,7 @@ ALGORITHMS = [
     "sieve-lagrange-lehmer-fsm-s18",
     "sieve-lagrange-lehmer-fsm-s19",
     "sieve-lagrange-lehmer-axler-fsm",
+    "sieve-lagrange-lehmer-axler-phi7-fsm",
 ]
 
 # zero-indexed prime(n), matching the upstream QueenJewels convention.
@@ -58,6 +59,7 @@ HIGH_CONFIDENCE_EXPECTED = {
 
 AXLER_BOUNDARY_EXPECTED = {
     # Exercises the Axler bound threshold at 46,254,381.
+    46_254_379: 905_060_129,
     46_254_380: 905_060_141,
     46_254_381: 905_060_147,
 }
@@ -105,6 +107,7 @@ def main() -> None:
         "sieve-lagrange-lehmer-fsm-s18",
         "sieve-lagrange-lehmer-fsm-s19",
         "sieve-lagrange-lehmer-axler-fsm",
+        "sieve-lagrange-lehmer-axler-phi7-fsm",
     ]
     for algorithm in high_confidence_algorithms:
         for n, expected in HIGH_CONFIDENCE_EXPECTED.items():
@@ -113,13 +116,12 @@ def main() -> None:
                 raise AssertionError(f"{algorithm} prime({n}) = {actual}; expected {expected}")
             print(f"{algorithm:22s} prime({n:>11,d}) = {actual:,}")
 
-    for n, expected in AXLER_BOUNDARY_EXPECTED.items():
-        actual = run_case("sieve-lagrange-lehmer-axler-fsm", n)
-        if actual != expected:
-            raise AssertionError(
-                f"sieve-lagrange-lehmer-axler-fsm prime({n}) = {actual}; expected {expected}"
-            )
-        print(f"{'sieve-lagrange-lehmer-axler-fsm':22s} prime({n:>11,d}) = {actual:,}")
+    for algorithm in ["sieve-lagrange-lehmer-axler-fsm", "sieve-lagrange-lehmer-axler-phi7-fsm"]:
+        for n, expected in AXLER_BOUNDARY_EXPECTED.items():
+            actual = run_case(algorithm, n)
+            if actual != expected:
+                raise AssertionError(f"{algorithm} prime({n}) = {actual}; expected {expected}")
+            print(f"{algorithm:22s} prime({n:>11,d}) = {actual:,}")
 
 
 if __name__ == "__main__":

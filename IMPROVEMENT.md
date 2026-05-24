@@ -12,12 +12,38 @@ Spirit-of-the-video note: this project is aligned with the video's algorithmic s
 
 | Comparison | Estimated one-second reach |
 |---|---:|
-| Pre-bitset wheel-30 segmented baseline | `26,361,427` |
-| Formula skip, `sieve-lagrange-fsm` | `2,142,928,499` |
-| Lehmer + pi table, `sieve-lagrange-lehmer-fsm` | `31,167,475,494` |
-| Best, `sieve-lagrange-lehmer-axler-fsm` | `32,747,821,786` |
+| Pre-bitset wheel-30 segmented baseline | `26,896,738` |
+| Formula skip, `sieve-lagrange-fsm` | `2,145,258,257` |
+| Lehmer + pi table, `sieve-lagrange-lehmer-fsm` | `32,471,825,139` |
+| Previous best, `sieve-lagrange-lehmer-axler-fsm` | `34,308,358,230` |
+| Best, `sieve-lagrange-lehmer-axler-phi7-fsm` | `37,415,030,844` |
 
-That is a `124126.3%` increase over the pre-bitset local baseline in the latest same-run benchmark. The current best local run proves `n = 1,000,000,000` in `0.039975s`, which is exactly the video's billion-prime headline target. Its interpolated one-second reach is `3274.78%` of that target.
+That is a `139006.2%` increase over the pre-bitset local baseline in the latest same-run benchmark. The current best reach method proves `n = 1,000,000,000` in `0.050801s`, which is exactly the video's billion-prime headline target. Its interpolated one-second reach is `3741.50%` of that target.
+
+Compared with the previous checked-in best (`sieve-lagrange-lehmer-axler-fsm`), the new `phi7` method moves the same-run one-second reach from `34,308,358,230` to `37,415,030,844`, a `9.1%` lift.
+
+## Implemented: deeper phi cache for Lehmer fast-forward
+
+Added `sieve-lagrange-lehmer-axler-phi7-fsm`, which keeps the same Axler-bounded wheel-30 FSM segmented sieve but changes the exact Lehmer prime-count fast-forward.
+
+The prior Lehmer counter cached `phi(x, a)` for the first six primes. The new method adds a seven-prime cache (`2*3*5*7*11*13*17 = 510,510`) and builds both phi cache tables with a linear sieve-style prefix pass instead of repeated modulo testing. The larger table has a startup cost, so it is slower at small `n`; it wins near the one-second crossing where exact prime counting is large enough to amortize that cost.
+
+### Same-run: Axler against Axler + phi7
+
+Comparison from the latest same-run benchmark:
+
+```text
+output/data/benchmark.csv
+```
+
+| n | `sieve-lagrange-lehmer-axler-fsm` | `sieve-lagrange-lehmer-axler-phi7-fsm` | phi7 delta |
+|---:|---:|---:|---:|
+| 1,000,000,000 | 0.037714 | 0.050801 | 34.7% slower |
+| 16,000,000,000 | 0.474028 | 0.447935 | 5.5% faster |
+| 32,000,000,000 | 0.934285 | 0.865979 | 7.3% faster |
+| 40,000,000,000 | 1.161590 | 1.063420 | 8.5% faster |
+
+The headline `n = 37,415,030,844` is an interpolated crossing, not a directly measured row. It comes from log-log interpolation between `n = 32,000,000,000` at `0.865979s` and `n = 40,000,000,000` at `1.063420s`; the interpolation assumes locally smooth power-law-like scaling near the crossing.
 
 ## Implemented: pi_lookup + Axler bounds for Lehmer fast-forward
 
@@ -40,16 +66,16 @@ output/data/benchmark.csv
 
 | n | `sieve-lagrange-lehmer-fsm` | `sieve-lagrange-lehmer-axler-fsm` | Axler delta |
 |---:|---:|---:|---:|
-| 1,000,000,000 | 0.040638 | 0.039975 | 1.6% faster |
-| 2,000,000,000 | 0.073609 | 0.074160 | 0.7% slower |
-| 4,000,000,000 | 0.136432 | 0.133154 | 2.4% faster |
-| 8,000,000,000 | 0.267871 | 0.257033 | 4.0% faster |
-| 16,000,000,000 | 0.518202 | 0.495567 | 4.4% faster |
-| 32,000,000,000 | 1.026330 | 0.978487 | 4.7% faster |
+| 1,000,000,000 | 0.043673 | 0.037714 | 13.6% faster |
+| 2,000,000,000 | 0.075549 | 0.071029 | 6.0% faster |
+| 4,000,000,000 | 0.141960 | 0.126826 | 10.7% faster |
+| 8,000,000,000 | 0.255945 | 0.249138 | 2.7% faster |
+| 16,000,000,000 | 0.506308 | 0.474028 | 6.4% faster |
+| 32,000,000,000 | 0.985613 | 0.934285 | 5.2% faster |
 
-The current same-run Lehmer + pi table path estimates `n = 31,167,475,494` at one second. Adding Axler bounds moves that estimate to `n = 32,747,821,786`, a `5.1%` same-run reach gain. Compared with the previous checked-in best before this optimization pass (`n = 12,230,629,361`), the new method is `167.8%` higher and `2.68x` larger.
+The current same-run Lehmer + pi table path estimates `n = 32,471,825,139` at one second. Adding Axler bounds moves that estimate to `n = 34,308,358,230`, a `5.7%` same-run reach gain.
 
-The headline `n = 32,747,821,786` is an interpolated crossing, not a directly measured row. It comes from log-log interpolation between `n = 32,000,000,000` at `0.978487s` and `n = 40,000,000,000` at `1.207230s`; the interpolation assumes locally smooth power-law-like scaling near the crossing.
+The Axler-only headline `n = 34,308,358,230` is interpolated between `n = 32,000,000,000` at `0.934285s` and `n = 40,000,000,000` at `1.161590s`.
 
 ## Implemented: Lehmer fast-forward plus FSM bitset sieve
 
@@ -73,9 +99,9 @@ output/data/benchmark.csv
 
 | n | `sieve-lagrange-fsm` | `sieve-lagrange-lehmer-fsm` | Speedup | Faster |
 |---:|---:|---:|---:|---:|
-| 1,000,000,000 | 0.476752 | 0.040638 | 11.73x | 91.5% |
-| 2,000,000,000 | 0.931976 | 0.073609 | 12.66x | 92.1% |
-| 4,000,000,000 | 1.890760 | 0.136432 | 13.86x | 92.8% |
+| 1,000,000,000 | 0.451025 | 0.043673 | 10.33x | 90.3% |
+| 2,000,000,000 | 0.934983 | 0.075549 | 12.38x | 91.9% |
+| 4,000,000,000 | 1.817370 | 0.141960 | 12.80x | 92.2% |
 
 In the latest benchmark CSV, `sieve-lagrange-fsm` is already over one second by `n = 4,000,000,000`, while `sieve-lagrange-lehmer-fsm` remains under one second through `n = 16,000,000,000` and crosses between `32,000,000,000` and `40,000,000,000`.
 
@@ -108,12 +134,12 @@ output/data/benchmark.csv
 
 | n | Previous `sieve-wheel30-bitset-fsm` | New `sieve-lagrange-fsm` | Speedup | Faster |
 |---:|---:|---:|---:|---:|
-| 10,000,000 | 0.071440 | 0.006427 | 11.12x | 91.0% |
-| 40,000,000 | 0.329311 | 0.018745 | 17.57x | 94.3% |
-| 100,000,000 | 0.892365 | 0.042828 | 20.84x | 95.2% |
-| 160,000,000 | 1.476400 | 0.072368 | 20.40x | 95.1% |
+| 10,000,000 | 0.073174 | 0.006715 | 10.90x | 90.8% |
+| 40,000,000 | 0.339875 | 0.020059 | 16.94x | 94.1% |
+| 100,000,000 | 0.952201 | 0.047067 | 20.23x | 95.1% |
+| 160,000,000 | 1.596870 | 0.073733 | 21.66x | 95.4% |
 
-At the video headline target in the latest benchmark CSV, `sieve-lagrange-fsm` computes `prime(1,000,000,000) = 22,801,763,513` in `0.476752s`, before the later Lehmer and Axler refinements.
+At the video headline target in the latest benchmark CSV, `sieve-lagrange-fsm` computes `prime(1,000,000,000) = 22,801,763,513` in `0.451025s`, before the later Lehmer, Axler, and phi7 refinements.
 
 ## Earlier implementation layers
 
@@ -133,15 +159,13 @@ This keeps the repo readable for recruiters: the current story is benchmarked fr
 py -3 scripts/build.py
 py -3 scripts/verify.py --fast
 py -3 scripts/bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output/data/benchmark.csv
-py -3 scripts/compare.py --algorithms sieve-lagrange-lehmer-fsm,sieve-lagrange-lehmer-axler-fsm --n 1000000000,4000000000,8000000000,16000000000,32000000000 --repeats 3 --timeout 20
+py -3 scripts/compare.py --algorithms sieve-lagrange-lehmer-axler-fsm,sieve-lagrange-lehmer-axler-phi7-fsm --n 16000000000,32000000000,40000000000 --repeats 3 --timeout 20
 py -3 scripts/plot.py
 ```
 
-## Next Candidates
+## Researched but not promoted
 
-- A carried-state wheel-30 bitset variant was implemented and benchmarked, but it was not counted as an improvement because it measured slower than `sieve-wheel30-bitset` at large `n`.
-- Pre-sieve the wheel-30 FSM segments for small primes to reduce hot-loop marking.
-- Count complete wheel-period chunks with wider words before drilling into bytes near the target.
-- Try a wheel-210 bitset variant to reduce candidate density below wheel-30.
-- Consider a reusable Lehmer counter object only if future bracketing or multi-count strategies are revived.
-- Extend `scripts/compare.py` to store raw samples and emit before/after comparison reports.
+- Exact Lehmer `pi(x)` inversion was correct but much slower than the segmented nth-prime path.
+- Approximation-centered Miller-Rabin scanning was correct but lost at large `n`.
+- A wheel-210 FSM sieve, pre-sieved wheel-30 segments, chunked popcount scanning, segment-size tuning, and a parallel final-window sieve were prototyped and benchmarked. None produced a repeatable enough same-run lift to replace `phi7`.
+- Future candidates should focus on reducing the final segmented-sieve scan without adding extra exact prime-count calls, or on a more advanced prime-counting method if the project intentionally moves beyond the video's simple C++ speedrun spirit.

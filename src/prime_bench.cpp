@@ -522,6 +522,10 @@ static std::uint8_t wheel30_bit(u64 value) {
 	return static_cast<std::uint8_t>(1u << wheel30_residue_index(value));
 }
 
+static unsigned wheel30_survivor_count(std::uint8_t composite) {
+	return std::popcount(static_cast<unsigned>(~composite & 0xffu));
+}
+
 static u64 nth_prime_wheel30_segmented(u64 n, u64 segment_width = 1 << 20) {
 	if (n < 3) {
 		return small_primes[n];
@@ -941,20 +945,19 @@ struct PhiSmallCache {
 			totient[a] = totient[a - 1] * (p - 1);
 		}
 
+		std::vector<std::uint8_t> survives(static_cast<std::size_t>(period), 1);
+		survives[0] = 0;
 		for (std::size_t a = 0; a <= max_a; ++a) {
-			table[a][0] = 0;
+			u64 running = 0;
 			for (u64 x = 0; x < period; ++x) {
-				if (x == 0) {
-					continue;
+				running += survives[static_cast<std::size_t>(x)] != 0 ? 1 : 0;
+				table[a][x] = running;
+			}
+			if (a < max_a) {
+				const u64 p = small_primes[a];
+				for (u64 multiple = p; multiple < period; multiple += p) {
+					survives[static_cast<std::size_t>(multiple)] = 0;
 				}
-				bool survives = true;
-				for (std::size_t prime_index = 0; prime_index < a; ++prime_index) {
-					if (x % small_primes[prime_index] == 0) {
-						survives = false;
-						break;
-					}
-				}
-				table[a][x] = table[a][x - 1] + (survives ? 1 : 0);
 			}
 		}
 	}
@@ -1056,6 +1059,127 @@ static u64 prime_count_lehmer_rec(
 	return result;
 }
 
+struct PhiMediumCache {
+	static constexpr std::size_t max_a = 7;
+	static constexpr u64 period = 510510;
+
+	u64 primorial[max_a + 1]{};
+	u64 totient[max_a + 1]{};
+	u64 table[max_a + 1][period]{};
+
+	PhiMediumCache() {
+		primorial[0] = 1;
+		totient[0] = 1;
+		for (std::size_t a = 1; a <= max_a; ++a) {
+			const u64 p = small_primes[a - 1];
+			primorial[a] = primorial[a - 1] * p;
+			totient[a] = totient[a - 1] * (p - 1);
+		}
+
+		std::vector<std::uint8_t> survives(static_cast<std::size_t>(period), 1);
+		survives[0] = 0;
+		for (std::size_t a = 0; a <= max_a; ++a) {
+			u64 running = 0;
+			for (u64 x = 0; x < period; ++x) {
+				running += survives[static_cast<std::size_t>(x)] != 0 ? 1 : 0;
+				table[a][x] = running;
+			}
+			if (a < max_a) {
+				const u64 p = small_primes[a];
+				for (u64 multiple = p; multiple < period; multiple += p) {
+					survives[static_cast<std::size_t>(multiple)] = 0;
+				}
+			}
+		}
+	}
+};
+
+static const PhiMediumCache& phi_medium_cache() {
+	static const PhiMediumCache cache;
+	return cache;
+}
+
+static u64 phi_legendre_medium(u64 x, std::size_t a, const std::vector<std::uint32_t>& primes) {
+	if (x == 0) {
+		return 0;
+	}
+	if (a == 0) {
+		return x;
+	}
+
+	const auto& cache = phi_medium_cache();
+	if (a <= PhiMediumCache::max_a) {
+		const u64 primorial = cache.primorial[a];
+		return (x / primorial) * cache.totient[a] + cache.table[a][x % primorial];
+	}
+	if (a < primes.size() && x < primes[a]) {
+		return 1;
+	}
+
+	u64 result = x;
+	for (std::size_t i = 0; i < a; ++i) {
+		const u64 q = x / primes[i];
+		if (q == 0) {
+			break;
+		}
+		const u64 removed = phi_legendre_medium(q, i, primes);
+		result -= removed;
+		if (removed == 1) {
+			for (std::size_t j = i + 1; j < a && primes[j] <= x; ++j) {
+				--result;
+			}
+			return result;
+		}
+	}
+	return result;
+}
+
+static u64 prime_count_lehmer_phi7_rec(
+	u64 x,
+	const std::vector<std::uint32_t>& primes,
+	const std::vector<std::uint32_t>& pi_lookup,
+	std::unordered_map<u64, u64>& cache
+) {
+	if (x < 2) {
+		return 0;
+	}
+	if (x < pi_lookup.size()) {
+		return pi_lookup[static_cast<std::size_t>(x)];
+	}
+	if (!primes.empty() && x <= primes.back()) {
+		return static_cast<u64>(std::upper_bound(primes.begin(), primes.end(), x) - primes.begin());
+	}
+
+	const auto cached = cache.find(x);
+	if (cached != cache.end()) {
+		return cached->second;
+	}
+
+	const u64 x_quarter = isqrt_floor(isqrt_floor(x));
+	const u64 x_sqrt = isqrt_floor(x);
+	const u64 x_cbrt = icbrt_floor(x);
+	const u64 a = prime_count_lehmer_phi7_rec(x_quarter, primes, pi_lookup, cache);
+	const u64 b = prime_count_lehmer_phi7_rec(x_sqrt, primes, pi_lookup, cache);
+	const u64 c = prime_count_lehmer_phi7_rec(x_cbrt, primes, pi_lookup, cache);
+
+	u64 result = phi_legendre_medium(x, static_cast<std::size_t>(a), primes);
+	result += ((b + a - 2) * (b - a + 1)) / 2;
+
+	for (u64 i = a; i < b; ++i) {
+		const u64 w = x / primes[static_cast<std::size_t>(i)];
+		result -= prime_count_lehmer_phi7_rec(w, primes, pi_lookup, cache);
+		if (i < c) {
+			const u64 limit = prime_count_lehmer_phi7_rec(isqrt_floor(w), primes, pi_lookup, cache);
+			for (u64 j = i; j < limit; ++j) {
+				result -= prime_count_lehmer_phi7_rec(w / primes[static_cast<std::size_t>(j)], primes, pi_lookup, cache) - j;
+			}
+		}
+	}
+
+	cache.emplace(x, result);
+	return result;
+}
+
 static std::vector<std::uint32_t> make_prime_pi_lookup(const std::vector<std::uint32_t>& primes) {
 	if (primes.empty()) {
 		return {};
@@ -1129,7 +1253,8 @@ static u64 nth_prime_lagrange_fsm_impl(
 	u64 segment_periods,
 	bool use_lehmer_count,
 	SkipStrategy skip_strategy,
-	BoundStrategy bound_strategy = BoundStrategy::classic
+	BoundStrategy bound_strategy = BoundStrategy::classic,
+	bool use_phi7_count = false
 ) {
 	if (n < 3) {
 		return small_primes[n];
@@ -1148,14 +1273,20 @@ static u64 nth_prime_lagrange_fsm_impl(
 			lehmer_cache.reserve(4096);
 		}
 		const auto prime_count = [&](u64 x) {
-			return use_lehmer_count
-				? prime_count_lehmer_rec(x, base_primes, pi_lookup, lehmer_cache)
-				: prime_count_legendre(x, base_primes);
+			if (!use_lehmer_count) {
+				return prime_count_legendre(x, base_primes);
+			}
+			return use_phi7_count
+				? prime_count_lehmer_phi7_rec(x, base_primes, pi_lookup, lehmer_cache)
+				: prime_count_lehmer_rec(x, base_primes, pi_lookup, lehmer_cache);
 		};
+		const u64 lower_bound = bound_strategy == BoundStrategy::axler
+			? axler_lower_bound_for_nth_prime(n)
+			: lower_bound_for_nth_prime(n);
 		u64 segment_base = skip_strategy == SkipStrategy::approximate_tight
 			? find_skip_base_from_estimate(n, segment_width, bound, approximate_nth_prime(n), prime_count)
 			: lagrange_skip_base_from_lower(
-				bound_strategy == BoundStrategy::axler ? axler_lower_bound_for_nth_prime(n) : lower_bound_for_nth_prime(n),
+				lower_bound,
 				segment_width,
 				bound
 			);
@@ -1177,11 +1308,12 @@ static u64 nth_prime_lagrange_fsm_impl(
 		}
 
 		auto states = make_wheel30_fsm_states(base_primes, segment_base);
+		std::vector<std::uint8_t> composite(static_cast<std::size_t>(segment_periods), 0);
 
 		for (; segment_base <= bound; segment_base += segment_width) {
 			const u64 high = std::min(bound + 1, segment_base + segment_width);
 			const u64 periods = (high - segment_base + 29) / 30;
-			std::vector<std::uint8_t> composite(static_cast<std::size_t>(periods), 0);
+			std::fill(composite.begin(), composite.begin() + static_cast<std::ptrdiff_t>(periods), 0);
 
 			for (auto& state : states) {
 				if (state.multiple >= high) {
@@ -1206,7 +1338,7 @@ static u64 nth_prime_lagrange_fsm_impl(
 				const bool edge_period = base < 7 || base + 29 > bound;
 
 				if (!edge_period) {
-					const unsigned survivors = std::popcount(static_cast<unsigned>(~composite[static_cast<std::size_t>(period)] & 0xffu));
+					const unsigned survivors = wheel30_survivor_count(composite[static_cast<std::size_t>(period)]);
 					if (count + survivors <= n) {
 						count += survivors;
 						continue;
@@ -1264,6 +1396,10 @@ static u64 nth_prime_lagrange_lehmer_axler_fsm(u64 n) {
 	return nth_prime_lagrange_fsm_impl(n, 1 << 16, true, SkipStrategy::dusart_lower, BoundStrategy::axler);
 }
 
+static u64 nth_prime_lagrange_lehmer_axler_phi7_fsm(u64 n) {
+	return nth_prime_lagrange_fsm_impl(n, 1 << 16, true, SkipStrategy::dusart_lower, BoundStrategy::axler, true);
+}
+
 static void print_usage(const char* exe) {
 	std::cerr << "Usage: " << exe << " <algorithm> <zero-indexed-n> [--time]\n"
 	          << "\nPrimary algorithms:\n"
@@ -1282,6 +1418,7 @@ static void print_usage(const char* exe) {
 	          << "  sieve-lagrange-fsm\n"
 	          << "  sieve-lagrange-lehmer-fsm\n"
 	          << "  sieve-lagrange-lehmer-axler-fsm\n"
+	          << "  sieve-lagrange-lehmer-axler-phi7-fsm\n"
 	          << "\nExperimental tuning variants (verified, not included in headline graphs):\n"
 	          << "  sieve-lagrange-lehmer-tight-fsm\n"
 	          << "  sieve-lagrange-lehmer-fsm-s17\n"
@@ -1340,6 +1477,8 @@ int main(int argc, char** argv) {
 		prime = nth_prime_lagrange_lehmer_fsm_s19(n);
 	} else if (algorithm == "sieve-lagrange-lehmer-axler-fsm") {
 		prime = nth_prime_lagrange_lehmer_axler_fsm(n);
+	} else if (algorithm == "sieve-lagrange-lehmer-axler-phi7-fsm") {
+		prime = nth_prime_lagrange_lehmer_axler_phi7_fsm(n);
 	} else {
 		throw std::invalid_argument("unknown algorithm");
 	}

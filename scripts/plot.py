@@ -36,6 +36,7 @@ CUSTOM_ALGORITHMS = [
     "sieve-lagrange-fsm",
     "sieve-lagrange-lehmer-fsm",
     "sieve-lagrange-lehmer-axler-fsm",
+    "sieve-lagrange-lehmer-axler-phi7-fsm",
 ]
 
 GROUP_NAMES = {
@@ -74,6 +75,7 @@ STYLE = {
     "sieve-lagrange-fsm": ("Lagrange + FSM", "#84cc16", "-"),
     "sieve-lagrange-lehmer-fsm": ("Lehmer + pi table FSM", "#22c55e", "-"),
     "sieve-lagrange-lehmer-axler-fsm": ("Lehmer + pi table + Axler", "#15803d", "-"),
+    "sieve-lagrange-lehmer-axler-phi7-fsm": ("Lehmer + Axler + phi7", "#047857", "-"),
 }
 
 CANVAS_BG = "#f6f8fc"
@@ -391,10 +393,14 @@ def plot_story_scorecard(rows: dict[str, list[dict[str, float]]], out: pathlib.P
     lehmer = reaches.get("sieve-lagrange-lehmer-fsm")
     if lehmer is not None and best_algorithm not in {"sieve-lagrange-fsm", "sieve-lagrange-lehmer-fsm"}:
         ladder.append(("Lehmer + pi table", float(lehmer["estimate"]), GROUP_CONFIG["custom"]["line"]))
+    axler = reaches.get("sieve-lagrange-lehmer-axler-fsm")
+    if axler is not None and best_algorithm != "sieve-lagrange-lehmer-axler-fsm":
+        ladder.append(("Axler bound", float(axler["estimate"]), GROUP_CONFIG["custom"]["line"]))
     best_label_by_algorithm = {
         "sieve-lagrange-fsm": "Legendre skip",
         "sieve-lagrange-lehmer-fsm": "Lehmer + pi table",
         "sieve-lagrange-lehmer-axler-fsm": "Pi table + Axler",
+        "sieve-lagrange-lehmer-axler-phi7-fsm": "Deeper phi table",
     }
     best_label = best_label_by_algorithm.get(best_algorithm, STYLE[best_algorithm][0])
     ladder.append((best_label, best_estimate, GROUP_CONFIG["custom"]["accent"]))
