@@ -2,20 +2,20 @@
 
 [![CI](https://github.com/Stroudmj00/prime-code-and-graphs/actions/workflows/ci.yml/badge.svg)](https://github.com/Stroudmj00/prime-code-and-graphs/actions/workflows/ci.yml)
 
-Portable reproduction of the algorithm/code-and-graphs side of
+Portable, video-inspired reproduction of the algorithm/code-and-graphs side of
 ["One second to find the BILLIONth PRIME"](https://www.youtube.com/watch?v=uJkoI5TnKzA).
 
 ## Recruiter Snapshot
 
-**What this is:** a reproducible, inspectable implementation of the same `prime(n)` challenge from the video, with a complete benchmark-and-graph workflow.
+**What this is:** a reproducible, inspectable implementation of the same one-second nth-prime challenge, with a complete benchmark-and-graph workflow.
 
 **What was improved:** the upstream `SheafificationOfG/QueenJewels` baseline relies on Linux-only LLVM IR + syscalls; this project rehomes it to portable C++ on Windows, keeps the zero-indexed `prime(n)` definition, then layers measured algorithmic and implementation optimizations.
 
-**Headline result:** on this machine, the current best reach method (`sieve-lagrange-lehmer-axler-phi7-fsm`) reaches the video target `n = 1,000,000,000` in `0.050801s`, with an estimated one-second reach of `n = 37,415,030,844` (`139006.2%` gain over the pre-bitset wheel-30 segmented baseline and `3741.50%` of the video headline target).
+**Headline result:** on this machine, the current best reach method (`sieve-lagrange-lehmer-axler-phi7-fsm`) reaches the repo's zero-indexed billion-scale milestone `n = 1,000,000,000` in `0.050801s`, with an estimated one-second reach of `n = 37,415,030,844` (`139006.2%` gain over the pre-bitset wheel-30 segmented baseline and `3741.50%` of the billion-index milestone).
 
 **Skills this demonstrates:** algorithm design, optimization systems thinking, experimental benchmarking, performance analysis, reproducible visualization, and practical systems adaptation across OS/runtime constraints.
 
-This project uses the same “what can we compute in one second?” framing as the video, but within a clearly defined scope: portable C++ reimplementation and incremental optimization, not Linux IR-level execution.
+This project uses the same "what can we compute in one second?" framing as the video, but within a clearly defined scope: portable C++ reimplementation and incremental optimization, not Linux IR-level execution.
 
 ## Scope, Honesty, and Trust Boundaries
 
@@ -23,8 +23,23 @@ The scope is intentionally video-inspired, not a full reimplementation of every 
 
 - It preserves the original `prime(n)` task and zero-indexed convention.
 - It measures progress on a fixed one-second budget and presents before/after results.
-- It adds optimization ideas only when they still compute the target directly; the `pi_lookup` table is an internal prime-count accelerator, not a table of final `prime(n)` answers.
+- It adds optimization ideas only when they still compute the target exactly; the `pi_lookup` table is an internal prime-count accelerator built from generated base primes, not a table of final `prime(n)` answers.
+- The fastest rows are formula-assisted segmented sieves: they compute exact `pi(base - 1)`, start near a proven lower-bound segment, and then still sieve/count candidates until the requested prime is reached.
+- These fastest rows should not be described as the exact same low-level method as the video/reference implementation; they are exact, video-inspired extensions.
 - It explicitly tracks that absolute values are hardware-relative and same-run deltas are the durable comparison.
+
+## Indexing Convention
+
+The upstream reference repo uses the convention `prime(0) = 2`, and this repo keeps that convention.
+
+That means the conventional billionth prime and the repo's `n = 1,000,000,000` row are adjacent but not identical:
+
+```text
+conventional 1,000,000,000th prime = prime(999,999,999) = 22,801,763,489
+repo benchmark milestone           = prime(1,000,000,000) = 22,801,763,513
+```
+
+When this README says `n`, it means the zero-indexed value passed to the benchmark binary.
 
 ## Current Local Score
 
@@ -34,7 +49,7 @@ The latest one-second reach benchmark on this machine estimates:
 
 ```text
 best local method:      sieve-lagrange-lehmer-axler-phi7-fsm
-video target proof:     n = 1,000,000,000 in 0.050801s
+zero-indexed proof:     n = 1,000,000,000 in 0.050801s
 prime(1,000,000,000):   22,801,763,513
 estimated 1s reach:     n = 37,415,030,844
 measured under 1s:      n = 32,000,000,000 in 0.865979s
@@ -43,13 +58,13 @@ measured over 1s:       n = 40,000,000,000 in 1.063420s
 
 The pre-bitset wheel-30 segmented baseline reaches an estimated `n = 26,896,738` at one second. The Lehmer/Axler/phi7-assisted FSM method reaches `n = 37,415,030,844`, which is `139006.2%` higher on this machine.
 
-The concrete milestone `n = 1,000,000,000` is exactly the video's headline target. The interpolated one-second reach, `n = 37,415,030,844`, is `3741.50%` of that target. The exact index is still hardware-relative; the durable claim is the same-run improvement between algorithms in this repo. Against the previous checked-in best (`sieve-lagrange-lehmer-axler-fsm`, `n = 34,308,358,230`), the new `phi7` method is `9.1%` higher in the same benchmark run.
+The concrete milestone `n = 1,000,000,000` is the repo's zero-indexed billion-scale proof point. The interpolated one-second reach, `n = 37,415,030,844`, is `3741.50%` of that milestone. The exact index is still hardware-relative; the durable claim is the same-run improvement between algorithms in this repo. Against the previous checked-in best (`sieve-lagrange-lehmer-axler-fsm`, `n = 34,308,358,230`), the new `phi7` method is `9.1%` higher in the same benchmark run.
 
 ## Visualization Guide
 
-The lead dashboard is a recruiter-facing summary of the benchmark story. It is designed to answer four questions without needing to read the benchmark table first:
+The lead scorecard is a recruiter-facing, image-generated summary of the benchmark story. It is reviewed against `output/graphs/summary.md` and is intentionally not regenerated by `scripts/plot.py`, so the audit plots can stay data-native while the README lead visual stays presentation-focused. It is designed to answer four questions without needing to read the benchmark table first:
 
-- what the video was targeting: `n = 1,000,000,000` in one second;
+- the billion-index milestone used for the repo story: zero-indexed `n = 1,000,000,000` in one second;
 - where the portable baseline landed: `n = 26,896,738` estimated at one second;
 - where my best method landed: `n = 37,415,030,844` estimated at one second, interpolated between the measured `32B` and `40B` samples;
 - what was directly measured: `n = 1,000,000,000` in `0.050801s` by the reach winner.
@@ -87,6 +102,8 @@ My portable C++ improvements:
 - Lehmer fast-forward plus wheel-30 FSM bitset segmented sieve
 - Lehmer fast-forward with an internal `pi_lookup` table and Axler nth-prime bounds plus wheel-30 FSM bitset segmented sieve
 - Lehmer/Axler fast-forward with a deeper seven-prime `phi` cache (`phi7`) for large-`n` prime counting
+
+The last four methods are responsible for the suspicious-looking speed jump. They are not shortcutting to a stored final answer; they replace wasted middle segments with exact prime-count fast-forwarding and then run the final segmented sieve.
 
 ## Build
 
@@ -147,11 +164,14 @@ Canonical generated files committed for the project story:
 output/data/benchmark.csv
 output/data/benchmark.meta.json
 output/graphs/story_scorecard.png
+output/graphs/story_scorecard.prompt.md
 output/graphs/runtime_curves.png
 output/graphs/one_second_reach.png
 output/graphs/prime_growth.png
 output/graphs/summary.md
 ```
+
+`scripts/plot.py` regenerates the audit graphs and summary from `output/data/benchmark.csv`. The lead `story_scorecard.png` is generated with image generation from the reviewed benchmark stats and then checked manually for numeric accuracy.
 
 Older exploratory benchmark snapshots are intentionally not tracked; regenerate comparisons from `output/data/benchmark.csv` or create a clearly named experiment file if you need a separate run.
 

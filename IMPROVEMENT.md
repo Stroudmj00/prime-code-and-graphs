@@ -2,13 +2,17 @@
 
 ## One-second scorecard
 
-The reference video, [One second to find the BILLIONth PRIME](https://www.youtube.com/watch?v=uJkoI5TnKzA), targets `n = 1,000,000,000` within one second.
+The reference video, [One second to find the BILLIONth PRIME](https://www.youtube.com/watch?v=uJkoI5TnKzA), sets the one-second billion-prime challenge. This repo follows the upstream QueenJewels convention `prime(0) = 2`, so its benchmark rows use zero-indexed `n`.
 
-This portable C++ reproduction does not claim to beat the video's final LLVM/Linux result. The measured improvement is within this repo's local Windows-friendly benchmark:
+This portable C++ reproduction does not claim to beat the video's final LLVM/Linux result with the same low-level method. The measured improvement is within this repo's local Windows-friendly benchmark:
 
 Hardware note: the exact one-second prime index is relative to the processor, compiler, operating system, and background load. The percentage improvement is the durable claim because it compares algorithms inside the same benchmark run on the same machine.
 
 Spirit-of-the-video note: this project is aligned with the video's algorithmic speedrun idea, but it is not a full reproduction of every low-level implementation detail or every algorithm in the reference repo. The baseline group is a video-inspired subset; the "mine" group contains portable C++ variants added here.
+
+Indexing note: the conventional 1,000,000,000th prime is `prime(999,999,999) = 22,801,763,489` in this repo's zero-indexed notation. The checked benchmark milestone `prime(1,000,000,000) = 22,801,763,513` is one index later.
+
+Integrity note: the fastest variants are exact formula-assisted segmented sieves. They compute exact `pi(base - 1)` with Legendre/Lehmer-style counting, fast-forward the marking state to a near-target segment, and still sieve/count candidates until the requested zero-indexed `prime(n)` is reached. The `pi_lookup` table is generated from base primes at runtime for prime-count subproblems; it is not a stored table of final nth-prime answers.
 
 | Comparison | Estimated one-second reach |
 |---|---:|
@@ -18,7 +22,7 @@ Spirit-of-the-video note: this project is aligned with the video's algorithmic s
 | Previous best, `sieve-lagrange-lehmer-axler-fsm` | `34,308,358,230` |
 | Best, `sieve-lagrange-lehmer-axler-phi7-fsm` | `37,415,030,844` |
 
-That is a `139006.2%` increase over the pre-bitset local baseline in the latest same-run benchmark. The current best reach method proves `n = 1,000,000,000` in `0.050801s`, which is exactly the video's billion-prime headline target. Its interpolated one-second reach is `3741.50%` of that target.
+That is a `139006.2%` increase over the pre-bitset local baseline in the latest same-run benchmark. The current best reach method proves the repo's zero-indexed billion-scale milestone `n = 1,000,000,000` in `0.050801s`. Its interpolated one-second reach is `3741.50%` of that milestone.
 
 Compared with the previous checked-in best (`sieve-lagrange-lehmer-axler-fsm`), the new `phi7` method moves the same-run one-second reach from `34,308,358,230` to `37,415,030,844`, a `9.1%` lift.
 
@@ -54,7 +58,7 @@ The two changes:
 1. `make_prime_pi_lookup` builds a dense `pi(x)` prefix table from the base primes for each Lehmer-counting context, so recursive Lehmer calls can answer small prime-count subproblems in constant time instead of repeatedly binary-searching the base-prime list.
 2. `BoundStrategy::axler` uses Axler nth-prime upper/lower bounds to tighten the range between the fast-forward starting segment and the final search bound.
 
-The correctness contract is unchanged: the algorithm still computes exact zero-indexed `prime(n)`. The lookup table is only an internal prime-count accelerator; it is not a table of final prime answers.
+The correctness contract is unchanged: the algorithm still computes exact zero-indexed `prime(n)`. The lookup table is only an internal prime-count accelerator generated from base primes for the current run; it is not a table of final prime answers.
 
 ### Same-run: pi_lookup Lehmer against pi_lookup + Axler
 
@@ -139,7 +143,7 @@ output/data/benchmark.csv
 | 100,000,000 | 0.952201 | 0.047067 | 20.23x | 95.1% |
 | 160,000,000 | 1.596870 | 0.073733 | 21.66x | 95.4% |
 
-At the video headline target in the latest benchmark CSV, `sieve-lagrange-fsm` computes `prime(1,000,000,000) = 22,801,763,513` in `0.451025s`, before the later Lehmer, Axler, and phi7 refinements.
+At the repo's zero-indexed billion-scale milestone in the latest benchmark CSV, `sieve-lagrange-fsm` computes `prime(1,000,000,000) = 22,801,763,513` in `0.451025s`, before the later Lehmer, Axler, and phi7 refinements.
 
 ## Earlier implementation layers
 

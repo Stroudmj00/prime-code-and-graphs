@@ -8,7 +8,6 @@ import math
 import pathlib
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyBboxPatch, Rectangle
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -16,7 +15,6 @@ DATA = ROOT / "output" / "data" / "benchmark.csv"
 GRAPH_DIR = ROOT / "output" / "graphs"
 VIDEO_URL = "https://www.youtube.com/watch?v=uJkoI5TnKzA"
 VIDEO_TARGET_N = 1_000_000_000
-PROOF_MILESTONE_N = VIDEO_TARGET_N
 LOCAL_BASELINE = "sieve-wheel30-segm"
 VIDEO_ALGORITHMS = [
     "naive-iterate",
@@ -162,13 +160,6 @@ def reach_by_algorithm(rows: dict[str, list[dict[str, float]]]) -> dict[str, dic
     return {algorithm: one_second_reach(data) for algorithm, data in rows.items()}
 
 
-def find_sample(rows: dict[str, list[dict[str, float]]], algorithm: str, n: int) -> dict[str, float] | None:
-    for item in rows.get(algorithm, []):
-        if item["n"] == n:
-            return item
-    return None
-
-
 def apply_recruiter_style() -> None:
     plt.style.use("default")
     plt.rcParams.update(
@@ -188,301 +179,6 @@ def apply_recruiter_style() -> None:
             "axes.titlepad": 10,
         }
     )
-
-
-def add_card(
-    ax,
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    title: str,
-    value: str,
-    subtitle: str,
-    color: str,
-    value_size: float = 20,
-) -> None:
-    card = FancyBboxPatch(
-        (x, y),
-        width,
-        height,
-        boxstyle="round,pad=0.012,rounding_size=0.022",
-        linewidth=1.2,
-        edgecolor=f"{color}77",
-        facecolor="#ffffff",
-        alpha=1.0,
-        transform=ax.transAxes,
-    )
-    ax.add_patch(card)
-    ax.text(
-        x + 0.025,
-        y + height - 0.047,
-        title,
-        transform=ax.transAxes,
-        color=TEXT_MUTED,
-        fontsize=10.5,
-        weight="bold",
-    )
-    ax.text(
-        x + 0.025,
-        y + height - 0.115,
-        value,
-        transform=ax.transAxes,
-        color="#0f172a",
-        fontsize=value_size,
-        weight="bold",
-    )
-    ax.text(
-        x + 0.025,
-        y + 0.035,
-        subtitle,
-        transform=ax.transAxes,
-        color=TEXT_MUTED,
-        fontsize=9,
-        va="bottom",
-        linespacing=1.16,
-    )
-
-
-def add_group_badge(ax, text: str, color: str, x: float, y: float, width: float = 0.18) -> None:
-    badge = FancyBboxPatch(
-        (x, y),
-        width,
-        0.045,
-        boxstyle="round,pad=0.01,rounding_size=0.02",
-        linewidth=0.9,
-        edgecolor=color,
-        facecolor="#ffffff",
-        transform=ax.transAxes,
-    )
-    ax.add_patch(badge)
-    ax.text(
-        x + 0.01,
-        y + 0.025,
-        text,
-        transform=ax.transAxes,
-        fontsize=8.8,
-        weight="bold",
-        color=color,
-        va="center",
-    )
-
-
-def plot_story_scorecard(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) -> None:
-    reaches = reach_by_algorithm(rows)
-    best_algorithm = max(reaches, key=lambda key: float(reaches[key]["estimate"]))
-    best = reaches[best_algorithm]
-    baseline = reaches[LOCAL_BASELINE]
-    bitset = reaches.get("sieve-wheel30-bitset")
-    fsm = reaches.get("sieve-wheel30-bitset-fsm")
-    target_sample = find_sample(rows, best_algorithm, PROOF_MILESTONE_N)
-
-    best_estimate = float(best["estimate"])
-    baseline_estimate = float(baseline["estimate"])
-    gain = (best_estimate / baseline_estimate - 1.0) * 100.0
-    multiplier = best_estimate / baseline_estimate
-    target_percent = PROOF_MILESTONE_N / VIDEO_TARGET_N * 100.0
-    estimate_percent = best_estimate / VIDEO_TARGET_N * 100.0
-
-    fig = plt.figure(figsize=(15.5, 8.8), facecolor=CANVAS_BG)
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_axis_off()
-
-    ax.text(
-        0.06,
-        0.93,
-        f"Portable C++ prime benchmark: same-run comparison",
-        transform=ax.transAxes,
-        color="#111827",
-        fontsize=25,
-        weight="bold",
-    )
-    ax.text(
-        0.06,
-        0.893,
-        "The charts are designed to make lift differences clear at a glance.",
-        transform=ax.transAxes,
-        color=TEXT_MUTED,
-        fontsize=11.5,
-    )
-    ax.text(
-        0.06,
-        0.872,
-        "Exact n values are hardware-relative; this report uses same-run relative comparisons.",
-        transform=ax.transAxes,
-        color="#6b7280",
-        fontsize=9.7,
-    )
-    ax.text(
-        0.06,
-        0.849,
-        "Estimated one-second crossings are interpolated and should be treated as directional guidance, not absolute proof.",
-        transform=ax.transAxes,
-        color="#6b7280",
-        fontsize=9.7,
-    )
-
-    proof_text = "not sampled"
-    proof_subtitle = "Run the reach benchmark at this milestone to confirm."
-    if target_sample is not None:
-        proof_text = f"{format_millions(PROOF_MILESTONE_N)} in {target_sample['seconds']:.3f}s"
-        proof_subtitle = f"prime(1B) = {format_int(target_sample['prime'])}"
-
-    add_card(
-        ax,
-        0.06,
-        0.62,
-        0.19,
-        0.18,
-        "External target",
-        "1B in 1s",
-        "video headline goal",
-        "#ef4444",
-        value_size=19,
-    )
-    add_card(
-        ax,
-        0.275,
-        0.62,
-        0.19,
-        0.18,
-        "Base local",
-        format_millions(baseline_estimate),
-        "wheel-30 segmented",
-        "#f59e0b",
-        value_size=19,
-    )
-    add_card(
-        ax,
-        0.49,
-        0.62,
-        0.19,
-        0.18,
-        "Best local estimate",
-        format_millions(best_estimate),
-        f"{gain:.1f}% above base",
-        "#22c55e",
-        value_size=19,
-    )
-    add_card(
-        ax,
-        0.705,
-        0.62,
-        0.24,
-        0.18,
-        "Measured proof point",
-        proof_text,
-        proof_subtitle,
-        "#8b5cf6",
-        value_size=17,
-    )
-
-    add_group_badge(ax, "Video target + portable baseline", GROUP_CONFIG["video"]["accent"], 0.06, 0.79, 0.38)
-    add_group_badge(ax, "My C++ result", GROUP_CONFIG["custom"]["accent"], 0.49, 0.79, 0.45)
-
-    ax_ladder = fig.add_axes([0.13, 0.18, 0.54, 0.34])
-    ax_ladder.set_facecolor("#f8fbff")
-    ladder = [("Wheel baseline", baseline_estimate, GROUP_CONFIG["video"]["line"])]
-    if bitset is not None:
-        ladder.append(("Bitset packing", float(bitset["estimate"]), GROUP_CONFIG["custom"]["line"]))
-    if fsm is not None:
-        ladder.append(("FSM marking", float(fsm["estimate"]), GROUP_CONFIG["custom"]["line"]))
-    legendre = reaches.get("sieve-lagrange-fsm")
-    if legendre is not None and best_algorithm != "sieve-lagrange-fsm":
-        ladder.append(("Legendre skip", float(legendre["estimate"]), GROUP_CONFIG["custom"]["line"]))
-    lehmer = reaches.get("sieve-lagrange-lehmer-fsm")
-    if lehmer is not None and best_algorithm not in {"sieve-lagrange-fsm", "sieve-lagrange-lehmer-fsm"}:
-        ladder.append(("Lehmer + pi table", float(lehmer["estimate"]), GROUP_CONFIG["custom"]["line"]))
-    axler = reaches.get("sieve-lagrange-lehmer-axler-fsm")
-    if axler is not None and best_algorithm != "sieve-lagrange-lehmer-axler-fsm":
-        ladder.append(("Axler bound", float(axler["estimate"]), GROUP_CONFIG["custom"]["line"]))
-    best_label_by_algorithm = {
-        "sieve-lagrange-fsm": "Legendre skip",
-        "sieve-lagrange-lehmer-fsm": "Lehmer + pi table",
-        "sieve-lagrange-lehmer-axler-fsm": "Pi table + Axler",
-        "sieve-lagrange-lehmer-axler-phi7-fsm": "Deeper phi table",
-    }
-    best_label = best_label_by_algorithm.get(best_algorithm, STYLE[best_algorithm][0])
-    ladder.append((best_label, best_estimate, GROUP_CONFIG["custom"]["accent"]))
-
-    labels = [item[0] for item in ladder]
-    values = [item[1] for item in ladder]
-    colors = [item[2] for item in ladder]
-    y_positions = list(range(len(ladder)))
-    bars = ax_ladder.barh(y_positions, values, color=colors, edgecolor="#ffffff", linewidth=1.1)
-    bars[-1].set_linewidth(2.2)
-    bars[-1].set_edgecolor("#0f172a")
-    ax_ladder.set_yticks(y_positions)
-    ax_ladder.set_yticklabels(labels)
-    ax_ladder.set_xscale("log")
-    ax_ladder.set_xlim(left=10_000_000, right=max(VIDEO_TARGET_N * 1.35, best_estimate * 1.45))
-    ax_ladder.axvline(VIDEO_TARGET_N, color="#ef4444", linestyle="--", linewidth=1.4)
-    ax_ladder.text(VIDEO_TARGET_N * 1.03, len(ladder) - 0.27, "video target\n1B", color="#ef4444", fontsize=9, va="top")
-    ax_ladder.set_xlabel("Estimated n at one second (log scale)")
-    ax_ladder.set_title("How each optimization layer contributes to reach", loc="left")
-    ax_ladder.grid(True, axis="x", alpha=0.25)
-    ladder_right = ax_ladder.get_xlim()[1]
-    for y, value in zip(y_positions, values):
-        pct = (value / baseline_estimate - 1.0) * 100.0
-        inside = value > ladder_right / 3.0
-        ax_ladder.text(
-            value / 1.08 if inside else value * 1.05,
-            y,
-            f"{format_int(value)}   ({pct:+.1f}%)",
-            va="center",
-            ha="right" if inside else "left",
-            color="#ffffff" if inside else "#0f172a",
-            fontsize=9,
-            weight="bold",
-        )
-
-    ax_progress = fig.add_axes([0.72, 0.22, 0.23, 0.26])
-    ax_progress.set_axis_off()
-    ax_progress.set_facecolor("#f8fbff")
-    ax_progress.text(0.0, 1.03, "Progress vs. target", transform=ax_progress.transAxes, color="#111827", fontsize=13, weight="bold")
-    ax_progress.text(
-        0.0,
-        0.86,
-        f"The target is n = 1,000,000,000.\nThe best estimate is {format_millions(best_estimate)} at one second.",
-        transform=ax_progress.transAxes,
-        color=TEXT_MUTED,
-        fontsize=9.2,
-        linespacing=1.2,
-    )
-    for index, (label, pct, color) in enumerate(
-        [
-            ("target 1B", target_percent, "#ef4444"),
-            ("best estimate", estimate_percent, "#22c55e"),
-        ]
-    ):
-        y = 0.45 - index * 0.28
-        track = Rectangle((0.0, y), 1.0, 0.095, linewidth=0, facecolor="#e5ebf6", transform=ax_progress.transAxes)
-        fill = Rectangle((0.0, y), min(1.0, pct / 100.0), 0.095, linewidth=0, facecolor=color, transform=ax_progress.transAxes)
-        ax_progress.add_patch(track)
-        ax_progress.add_patch(fill)
-        ax_progress.text(0.0, y + 0.13, label, transform=ax_progress.transAxes, color=TEXT_MUTED, fontsize=9.8)
-        ax_progress.text(
-            0.98,
-            y + 0.055,
-            f"{pct:.2f}%",
-            transform=ax_progress.transAxes,
-            color="#ffffff",
-            fontsize=11.5,
-            weight="bold",
-            va="center",
-            ha="right",
-        )
-
-    ax.text(
-        0.06,
-        0.055,
-        "Interpretation: this is the same prime-index challenge and same-run context as the video's benchmark format; use this to judge directional relative improvements.",
-        transform=ax.transAxes,
-        color=TEXT_MUTED,
-        fontsize=10,
-    )
-    fig.savefig(out, dpi=180)
-    plt.close(fig)
 
 
 def _order_group_algorithms(algorithms: list[str], rows: dict[str, list[dict[str, float]]]) -> list[str]:
@@ -767,9 +463,12 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
     lines = [
         "# Benchmark Summary",
         "",
-        f"Video target: [One second to find the BILLIONth PRIME]({VIDEO_URL}) targets `n = 1,000,000,000`.",
+        f"Video context: [One second to find the BILLIONth PRIME]({VIDEO_URL}) sets the one-second billion-prime challenge.",
+        "",
+        "Indexing note: this repo follows the upstream zero-indexed convention `prime(0) = 2`. The conventional 1,000,000,000th prime is `prime(999,999,999) = 22,801,763,489`; the checked benchmark milestone `prime(1,000,000,000) = 22,801,763,513` is one index later.",
         "",
         "All comparisons below are same-run. Exact prime-index values are hardware-relative; the meaningful claim is relative lift between algorithms measured together.",
+        "The fastest variants use exact prime-count fast-forwarding plus a final segmented sieve; the `pi_lookup` accelerator is not a stored table of final nth-prime answers.",
         "",
         f"Local best: `{best_label}` reaches an estimated `n = {format_int(float(best['estimate']))}` at one second.",
         f"Measured under-one-second anchor: {under_text}.",
@@ -786,11 +485,11 @@ def write_summary(rows: dict[str, list[dict[str, float]]], out: pathlib.Path) ->
         gain = (float(best["estimate"]) / float(baseline["estimate"]) - 1.0) * 100.0
         if video_ratio >= 100.0:
             video_line = (
-                f"This run reaches `~{video_ratio:.2f}%` of the video's one-billion headline target at the estimated one-second crossing."
+                f"This run reaches `~{video_ratio:.2f}%` of the repo's zero-indexed billion-scale milestone at the estimated one-second crossing."
             )
         else:
             video_line = (
-                f"This run reaches `~{video_ratio:.2f}%` of the video's one-billion headline target at the estimated one-second crossing."
+                f"This run reaches `~{video_ratio:.2f}%` of the repo's zero-indexed billion-scale milestone at the estimated one-second crossing."
             )
         lines.extend(
             [
@@ -850,7 +549,8 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
     apply_recruiter_style()
 
-    plot_story_scorecard(rows, args.output / "story_scorecard.png")
+    # The lead README scorecard is an image-generated asset reviewed from the
+    # benchmark summary, so this script intentionally does not overwrite it.
     plot_runtime(rows, args.output / "runtime_curves.png")
     plot_max_under(rows, args.output / "one_second_reach.png")
     plot_prime_growth(rows, args.output / "prime_growth.png")

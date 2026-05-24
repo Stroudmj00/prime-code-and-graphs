@@ -1,15 +1,18 @@
 # Benchmark Summary
 
-Video target: [One second to find the BILLIONth PRIME](https://www.youtube.com/watch?v=uJkoI5TnKzA) targets `n = 1,000,000,000`.
+Video context: [One second to find the BILLIONth PRIME](https://www.youtube.com/watch?v=uJkoI5TnKzA) sets the one-second billion-prime challenge.
+
+Indexing note: this repo follows the upstream zero-indexed convention `prime(0) = 2`. The conventional 1,000,000,000th prime is `prime(999,999,999) = 22,801,763,489`; the checked benchmark milestone `prime(1,000,000,000) = 22,801,763,513` is one index later.
 
 All comparisons below are same-run. Exact prime-index values are hardware-relative; the meaningful claim is relative lift between algorithms measured together.
+The fastest variants use exact prime-count fast-forwarding plus a final segmented sieve; the `pi_lookup` accelerator is not a stored table of final nth-prime answers.
 
 Local best: `Lehmer + Axler + phi7` reaches an estimated `n = 37,415,030,844` at one second.
 Measured under-one-second anchor: `n = 32,000,000,000` at `0.865979s`.
 Interpolation bracket: log-log interpolation between `n = 32,000,000,000` at `0.865979s` and `n = 40,000,000,000` at `1.063420s`.
 Index note: benchmark rows use zero-indexed `n`; interpolation is performed on `n + 1` and converted back to zero-indexed `n`.
 Best vs. pre-bitset wheel-30 baseline: `139006.2%` higher estimated one-second reach.
-This run reaches `~3741.50%` of the video's one-billion headline target at the estimated one-second crossing.
+This run reaches `~3741.50%` of the repo's zero-indexed billion-scale milestone at the estimated one-second crossing.
 
 ## Estimated One-Second Reach
 
