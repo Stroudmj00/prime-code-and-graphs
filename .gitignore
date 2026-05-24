@@ -7,6 +7,7 @@ venv/
 
 # Local build products. The source, benchmark CSVs, and rendered graph PNGs are committed.
 output/bin/
+output/graphs-ci/
 *.exe
 *.obj
 *.o

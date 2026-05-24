@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime as dt
+import json
 import os
 import pathlib
+import platform
 import statistics
 import subprocess
 import sys
@@ -13,6 +16,7 @@ import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 EXE = ROOT / "output" / "bin" / ("prime_bench.exe" if os.name == "nt" else "prime_bench")
+BUILD_META = ROOT / "output" / "bin" / "build_meta.json"
 OUT_DIR = ROOT / "output" / "data"
 OUT_CSV = OUT_DIR / "benchmark.csv"
 
@@ -65,6 +69,59 @@ def run_case(algorithm: str, n: int, repeats: int, timeout: float) -> tuple[int,
     return prime, statistics.median(values)
 
 
+def git_output(*args: str) -> str | None:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=ROOT,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    return proc.stdout.strip()
+
+
+def metadata_path(csv_path: pathlib.Path) -> pathlib.Path:
+    return csv_path.with_name(f"{csv_path.stem}.meta.json")
+
+
+def write_metadata(args: argparse.Namespace, started_at: dt.datetime) -> pathlib.Path:
+    build_meta = None
+    if BUILD_META.exists():
+        build_meta = json.loads(BUILD_META.read_text(encoding="utf-8"))
+
+    try:
+        benchmark_data_file = str(args.output.relative_to(ROOT))
+    except ValueError:
+        benchmark_data_file = str(args.output)
+
+    meta = {
+        "benchmark_data_file": benchmark_data_file,
+        "started_at_utc": started_at.isoformat().replace("+00:00", "Z"),
+        "finished_at_utc": dt.datetime.now(dt.UTC).isoformat().replace("+00:00", "Z"),
+        "command": " ".join(sys.argv),
+        "repeats": args.repeats,
+        "timeout_seconds": args.timeout,
+        "full": bool(args.full),
+        "reach_one_second": bool(args.reach_one_second),
+        "max_n": args.max_n,
+        "git_commit": git_output("rev-parse", "HEAD"),
+        "git_dirty": bool(git_output("status", "--porcelain")),
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "build": build_meta,
+        "notes": "Absolute one-second reach is hardware-relative; same-run relative lift is the primary comparison.",
+    }
+    out = metadata_path(args.output)
+    out.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate prime benchmark data")
     parser.add_argument("-o", "--output", type=pathlib.Path, default=OUT_CSV)
@@ -91,6 +148,7 @@ def main() -> None:
     if not EXE.exists():
         raise SystemExit(f"Missing binary: {EXE}. Run scripts/build.py first.")
 
+    started_at = dt.datetime.now(dt.UTC)
     algorithms = {key: list(value) for key, value in ALGORITHMS.items()}
     if args.full:
         algorithms["sieve-erat"].extend([2_000_000, 5_000_000, 10_000_000])
@@ -161,7 +219,9 @@ def main() -> None:
                 ):
                     samples.append(min(args.max_n, max(n + 1, n * 2)))
 
+    meta_path = write_metadata(args, started_at)
     print(args.output)
+    print(meta_path)
 
 
 if __name__ == "__main__":

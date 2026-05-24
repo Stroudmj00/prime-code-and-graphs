@@ -1,0 +1,12 @@
+{
+  "benchmark_data_file": "output/data/benchmark.csv",
+  "benchmark_file_last_modified_utc": "2026-05-23T03:40:15.305039Z",
+  "metadata_recorded_utc": "2026-05-24T01:51:50.375210Z",
+  "command": "py -3 scripts/bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output/data/benchmark.csv",
+  "git_commit_at_metadata_recording": "dc244088481d9d2c900d66f2f7c96d65c0536000",
+  "python": "3.14.0",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "machine": "AMD64",
+  "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel",
+  "notes": "Benchmark values are local and hardware-relative; compare same-run percentages rather than absolute one-second n across machines."
+}

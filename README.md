@@ -1,24 +1,30 @@
 # Prime Code and Graphs
 
+[![CI](https://github.com/Stroudmj00/prime-code-and-graphs/actions/workflows/ci.yml/badge.svg)](https://github.com/Stroudmj00/prime-code-and-graphs/actions/workflows/ci.yml)
+
 Portable reproduction of the algorithm/code-and-graphs side of
 ["One second to find the BILLIONth PRIME"](https://www.youtube.com/watch?v=uJkoI5TnKzA).
 
-The video asks a simple performance question: how large can `n` get if a program has one second to compute `prime(n)`? The video's headline target is the billionth prime, `n = 1,000,000,000`.
+## Recruiter Snapshot
 
-The upstream reference repo, `SheafificationOfG/QueenJewels`, uses Linux-specific LLVM IR and raw Linux syscalls. This folder keeps the same zero-indexed `prime(n)` convention and makes an inspectable Windows-friendly C++ version, then improves that portable version with measured before/after benchmarks. The current portable implementation reaches the video's headline `n = 1,000,000,000` target in under one second on this machine.
+**What this is:** a reproducible, inspectable implementation of the same `prime(n)` challenge from the video, with a complete benchmark-and-graph workflow.
 
-## Is This In The Spirit Of The Video?
+**What was improved:** the upstream `SheafificationOfG/QueenJewels` baseline relies on Linux-only LLVM IR + syscalls; this project rehomes it to portable C++ on Windows, keeps the zero-indexed `prime(n)` definition, then layers measured algorithmic and implementation optimizations.
 
-Yes, with a specific scope. The spirit of the video is an algorithmic speedrun: start with simple prime-finding methods, keep the one-second budget fixed, and improve how far `prime(n)` can go through better algorithms and tighter implementation.
+**Headline result:** on this machine, the current best method (`sieve-lagrange-lehmer-fsm`) reaches the video target `n = 1,000,000,000` in `0.120388s`, with an estimated one-second reach of `n = 12,230,629,361` (`45186.4%` gain over the pre-bitset wheel-30 segmented baseline and `1223.06%` of the video headline target).
 
-This project follows that spirit because it:
+**Skills this demonstrates:** algorithm design, optimization systems thinking, experimental benchmarking, performance analysis, reproducible visualization, and practical systems adaptation across OS/runtime constraints.
 
-- keeps the same `prime(n)` task and zero-indexed convention;
-- measures every algorithm against a one-second budget;
-- shows the progression from trial division to sieving to wheel-based segmented sieving;
-- adds new implementation ideas only when they still compute the prime directly, not by table lookup.
+This project uses the same “what can we compute in one second?” framing as the video, but within a clearly defined scope: portable C++ reimplementation and incremental optimization, not Linux IR-level execution.
 
-The scope is different from the video. This repo is portable C++ on Windows, while the reference project is low-level LLVM IR with Linux-specific runtime choices. The honest claim is: within this portable local reproduction, the added formula-assisted variant improves the same-run baseline by `45186.4%`, and the current implementation reaches `n = 1,000,000,000` in well under one second on this machine.
+## Scope, Honesty, and Trust Boundaries
+
+The scope is intentionally video-inspired, not a full reimplementation of every reference implementation detail.
+
+- It preserves the original `prime(n)` task and zero-indexed convention.
+- It measures progress on a fixed one-second budget and presents before/after results.
+- It adds optimization ideas only when they still compute the target directly (no table-lookup shortcuts).
+- It explicitly tracks that absolute values are hardware-relative.
 
 ## Current Local Score
 
@@ -85,43 +91,58 @@ Requirements:
 
 - Python 3
 - `clang++`, `g++`, or another C++20 compiler passed with `--cxx`
-- Python plotting dependency: `py -3 -m pip install -r requirements.txt`
+- Python plotting dependency: `python -m pip install -r requirements.txt`
+
+Cross-platform:
+
+```console
+python scripts/build.py
+python scripts/verify.py --fast
+python scripts/plot.py
+```
+
+Windows launcher equivalent:
 
 ```console
 py -3 scripts/build.py
+py -3 scripts/verify.py --fast
+py -3 scripts/plot.py
 ```
 
-## Verify
+For a generic non-CPU-specific binary, use:
 
 ```console
-py -3 scripts/verify.py --fast
+python scripts/build.py --portable
 ```
 
 ## Run One Algorithm
 
 ```console
-output\bin\prime_bench.exe sieve-lagrange-lehmer-fsm 1000000000
+output/bin/prime_bench sieve-lagrange-lehmer-fsm 1000000000
 ```
 
 The program prints the zero-indexed nth prime.
 
+On Windows, the binary path is `output\bin\prime_bench.exe`.
+
 ## Generate Benchmark Data and Graphs
 
 ```console
-py -3 scripts/bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output\data\benchmark.csv
-py -3 scripts/plot.py
+python scripts/bench.py --repeats 3 --timeout 8 --full --reach-one-second -o output/data/benchmark.csv
+python scripts/plot.py
 ```
 
 For quick candidate comparisons without regenerating every graph:
 
 ```console
-py -3 scripts/compare.py --algorithms sieve-lagrange-fsm,sieve-lagrange-lehmer-fsm --n 1000000000,4000000000,8000000000 --repeats 3
+python scripts/compare.py --algorithms sieve-lagrange-fsm,sieve-lagrange-lehmer-fsm --n 1000000000,4000000000,8000000000 --repeats 3
 ```
 
 Generated files:
 
 ```text
 output/data/benchmark.csv
+output/data/benchmark.meta.json
 output/graphs/story_scorecard.png
 output/graphs/runtime_curves.png
 output/graphs/one_second_reach.png
@@ -132,5 +153,7 @@ output/graphs/summary.md
 ## Notes
 
 The one-second reach values are log-interpolated between measured samples around the one-second crossing. The summary file also shows the last measured point below one second and the next measured point above one second for each algorithm.
+
+`output/data/benchmark.meta.json` records the local run context for the checked-in benchmark data. Future benchmark runs write a fresh metadata sidecar next to the requested CSV.
 
 See `IMPROVEMENT.md` for the measured implementation improvements: Lehmer fast-forwarding, Lagrange/Legendre fast-forwarding, Miller-Rabin base tiering, wheel-30 indexing, wheel-30 bitset packing, wheel-30 FSM marking, packed odd-only dense sieving, and odd-only segmented sieving.
