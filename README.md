@@ -46,16 +46,16 @@ The concrete milestone `n = 1,000,000,000` is exactly the video's headline targe
 
 ## Visualization Guide
 
-The lead graph is the story scorecard. It is designed to answer four questions without needing to read the benchmark table first:
+The lead dashboard is a recruiter-facing summary of the benchmark story. It is designed to answer four questions without needing to read the benchmark table first:
 
 - what the video was targeting: `n = 1,000,000,000` in one second;
 - where the portable baseline landed: `n = 27,007,283` estimated at one second;
 - where my best method landed: `n = 12,230,629,361` estimated at one second;
 - what was directly measured: `n = 1,000,000,000` in `0.120388s`.
 
-The runtime plot is the audit view: it cleanly separates the video-inspired baseline subset from my portable C++ improvements, and both panels keep the one-second line visible. The one-second reach plot is the ranking view: it shows how far each algorithm gets in one second, grouped into video-inspired algorithms and my added variants.
+The runtime plot is the audit view: it cleanly separates the video-inspired baseline subset from my portable C++ improvements, and both panels keep the one-second line visible. The one-second reach plot is the raw ranking view generated from the benchmark CSV.
 
-![Story scorecard](output/graphs/story_scorecard.png)
+![Prime benchmark dashboard](assets/recruiter_dashboard.png)
 
 ![Runtime curves](output/graphs/runtime_curves.png)
 
@@ -143,6 +143,7 @@ Generated files:
 ```text
 output/data/benchmark.csv
 output/data/benchmark.meta.json
+assets/recruiter_dashboard.png
 output/graphs/story_scorecard.png
 output/graphs/runtime_curves.png
 output/graphs/one_second_reach.png
